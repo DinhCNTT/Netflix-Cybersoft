@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# .NET
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+.vs/
+*.user
+*.suo
+appsettings.json
+appsettings.*.json
+
+# macOS
+.DS_Store
