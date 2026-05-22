@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Netflix.Api.Models;
 
 namespace Netflix.Api.Data
 {
@@ -8,7 +9,16 @@ namespace Netflix.Api.Data
         {
         }
 
-        // Add DbSets here
-        // public DbSet<Movie> Movies { get; set; }
+        public DbSet<User> Users { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Make Email unique
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+        }
     }
 }
