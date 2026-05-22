@@ -7,12 +7,17 @@ import CheckEmail from '../pages/Auth/CheckEmail';
 import VerifyEmail from '../pages/Auth/VerifyEmail';
 import ChoosePlan from '../pages/Auth/ChoosePlan';
 import Checkout from '../pages/Auth/Checkout';
+import ManageProfiles from '../pages/Profiles/ManageProfiles';
+import EditProfile from '../pages/Profiles/EditProfile';
+import Browse from '../pages/Browse/Browse';
 import useAuthStore from '../store/authStore';
+import useProfileStore from '../store/profileStore';
 
 // Simple protected route component
-const ProtectedRoute = ({ children, requireSubscription = true }) => {
+const ProtectedRoute = ({ children, requireSubscription = true, requireProfile = false }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+  const activeProfile = useProfileStore((state) => state.activeProfile);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -26,10 +31,19 @@ const ProtectedRoute = ({ children, requireSubscription = true }) => {
     return <Navigate to="/choose-plan" replace />;
   }
 
-  // Nếu route KHÔNG yêu cầu nạp gói (như trang choose-plan), nhưng user ĐÃ nạp rồi -> Đẩy vào /browse
   if (!requireSubscription && isSubscribed) {
-    return <Navigate to="/browse" replace />;
+    // Nếu route KHÔNG yêu cầu nạp gói (như chọn gói, thanh toán) mà đã nạp rồi -> Đẩy vào chọn Profile
+    return <Navigate to="/profiles" replace />;
   }
+
+  // Nếu route CẦN chọn Profile (ví dụ /browse) nhưng user chưa chọn -> Ép chọn Profile
+  if (requireSubscription && requireProfile && !activeProfile) {
+    return <Navigate to="/profiles" replace />;
+  }
+
+  // Nếu route LÀ trang chọn Profile (requireProfile = false) nhưng user ĐÃ chọn rồi -> Đẩy vô Browse
+  // (Trừ khi họ cố tình bấm nút quay ra trang quản lý profile)
+  // Thực tế Netflix cho phép quay lại trang Profile, nên ta có thể không cần bắt buộc chặn chiều này.
 
   return children;
 };
@@ -91,20 +105,38 @@ const AppRouter = () => {
           />
         </Route>
 
-        {/* Protected Routes (Subscription Required) */}
+        {/* Protected Routes (Subscription Required & Profile Required) */}
         <Route 
           path="/browse" 
           element={
-            <ProtectedRoute requireSubscription={true}>
-              <div className="min-h-screen bg-[#141414] text-white flex items-center justify-center">
-                <h1 className="text-4xl">Welcome to Netflix Clone (Browse Page)</h1>
-                <button 
-                  onClick={() => useAuthStore.getState().logout()}
-                  className="ml-4 px-4 py-2 bg-red-600 rounded"
-                >
-                  Logout
-                </button>
-              </div>
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Browse />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Protected Routes (Subscription Required, Profile NOT Required) - Profile Management */}
+        <Route 
+          path="/profiles" 
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={false}>
+              <ManageProfiles />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profiles/create" 
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={false}>
+              <EditProfile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profiles/edit/:id" 
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={false}>
+              <EditProfile />
             </ProtectedRoute>
           } 
         />

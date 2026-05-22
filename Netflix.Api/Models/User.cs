@@ -40,5 +40,7 @@ namespace Netflix.Api.Models
         public bool IsSubscribed { get; set; } = false;
         public string? SubscriptionPlan { get; set; }
         public string? PaymentMethod { get; set; }
+
+        public virtual ICollection<Profile> Profiles { get; set; } = new List<Profile>();
     }
 }
