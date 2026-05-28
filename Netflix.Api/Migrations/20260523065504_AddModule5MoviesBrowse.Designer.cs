@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Netflix.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Netflix.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260523065504_AddModule5MoviesBrowse")]
+    partial class AddModule5MoviesBrowse
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -986,24 +989,6 @@ namespace Netflix.Api.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Netflix.Api.Models.MyList", b =>
-                {
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("MovieId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("ProfileId", "MovieId");
-
-                    b.HasIndex("MovieId");
-
-                    b.ToTable("MyLists");
-                });
-
             modelBuilder.Entity("Netflix.Api.Models.Profile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1037,32 +1022,6 @@ namespace Netflix.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Profiles");
-                });
-
-            modelBuilder.Entity("Netflix.Api.Models.Rating", b =>
-                {
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("MovieId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Value")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.HasKey("ProfileId", "MovieId");
-
-                    b.HasIndex("MovieId");
-
-                    b.ToTable("Ratings", t =>
-                        {
-                            t.HasCheckConstraint("CK_Ratings_Value", "\"Value\" IN (-1, 1)");
-                        });
                 });
 
             modelBuilder.Entity("Netflix.Api.Models.Season", b =>
@@ -1184,21 +1143,6 @@ namespace Netflix.Api.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Netflix.Api.Models.UserFavoriteMovie", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("MovieId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("UserId", "MovieId");
-
-                    b.HasIndex("MovieId");
-
-                    b.ToTable("UserFavoriteMovies");
-                });
-
             modelBuilder.Entity("Netflix.Api.Models.WatchHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -1265,25 +1209,6 @@ namespace Netflix.Api.Migrations
                     b.Navigation("Movie");
                 });
 
-            modelBuilder.Entity("Netflix.Api.Models.MyList", b =>
-                {
-                    b.HasOne("Netflix.Api.Models.Movie", "Movie")
-                        .WithMany("MyListProfiles")
-                        .HasForeignKey("MovieId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Netflix.Api.Models.Profile", "Profile")
-                        .WithMany("MyListItems")
-                        .HasForeignKey("ProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Movie");
-
-                    b.Navigation("Profile");
-                });
-
             modelBuilder.Entity("Netflix.Api.Models.Profile", b =>
                 {
                     b.HasOne("Netflix.Api.Models.User", "User")
@@ -1295,25 +1220,6 @@ namespace Netflix.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Netflix.Api.Models.Rating", b =>
-                {
-                    b.HasOne("Netflix.Api.Models.Movie", "Movie")
-                        .WithMany("Ratings")
-                        .HasForeignKey("MovieId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Netflix.Api.Models.Profile", "Profile")
-                        .WithMany("Ratings")
-                        .HasForeignKey("ProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Movie");
-
-                    b.Navigation("Profile");
-                });
-
             modelBuilder.Entity("Netflix.Api.Models.Season", b =>
                 {
                     b.HasOne("Netflix.Api.Models.Movie", "Movie")
@@ -1323,25 +1229,6 @@ namespace Netflix.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Movie");
-                });
-
-            modelBuilder.Entity("Netflix.Api.Models.UserFavoriteMovie", b =>
-                {
-                    b.HasOne("Netflix.Api.Models.Movie", "Movie")
-                        .WithMany("FavoriteUsers")
-                        .HasForeignKey("MovieId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Netflix.Api.Models.User", "User")
-                        .WithMany("FavoriteMovies")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Movie");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Netflix.Api.Models.WatchHistory", b =>
@@ -1382,13 +1269,7 @@ namespace Netflix.Api.Migrations
 
             modelBuilder.Entity("Netflix.Api.Models.Movie", b =>
                 {
-                    b.Navigation("FavoriteUsers");
-
                     b.Navigation("MovieGenres");
-
-                    b.Navigation("MyListProfiles");
-
-                    b.Navigation("Ratings");
 
                     b.Navigation("Seasons");
 
@@ -1397,10 +1278,6 @@ namespace Netflix.Api.Migrations
 
             modelBuilder.Entity("Netflix.Api.Models.Profile", b =>
                 {
-                    b.Navigation("MyListItems");
-
-                    b.Navigation("Ratings");
-
                     b.Navigation("WatchHistories");
                 });
 
@@ -1411,8 +1288,6 @@ namespace Netflix.Api.Migrations
 
             modelBuilder.Entity("Netflix.Api.Models.User", b =>
                 {
-                    b.Navigation("FavoriteMovies");
-
                     b.Navigation("Profiles");
                 });
 #pragma warning restore 612, 618

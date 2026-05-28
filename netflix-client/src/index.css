@@ -1,13 +1,156 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Netflix Sans";
+  src: url("/fonts/netflix-sans-core-variable-full.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --nf-black: #141414;
+  --nf-red: #e50914;
+  --nf-white: #ffffff;
+  --nf-text: #e5e5e5;
+  --nf-muted: #b3b3b3;
+  --nf-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --nf-ease-zoom: cubic-bezier(0.22, 0.68, 0, 1.01);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--nf-black);
+  color: var(--nf-text);
+  overflow-x: hidden;
+  font-family: "Netflix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes netflixFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes netflixFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes netflixZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes netflixZoomInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes netflixZoomInRight {
+  from {
+    opacity: 0;
+    transform: translateX(18px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes netflixDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-netflix-fade-up {
+  opacity: 0;
+  animation: netflixFadeUp 0.5s ease forwards;
+}
+
+.motion-fade-in {
+  opacity: 0;
+  animation: netflixFadeIn 420ms var(--nf-ease-out) forwards;
+}
+
+.motion-zoom-in {
+  animation: netflixZoomIn 300ms var(--nf-ease-zoom) both;
+}
+
+.motion-zoom-in-left {
+  animation: netflixZoomInLeft 300ms var(--nf-ease-zoom) both;
+}
+
+.motion-zoom-in-right {
+  animation: netflixZoomInRight 300ms var(--nf-ease-zoom) both;
+}
+
+.motion-menu-in {
+  animation: netflixDropIn 220ms var(--nf-ease-out) both;
+}
+
+.netflix-row-track {
+  scroll-snap-type: x proximity;
+}
+
+.netflix-row-track > * {
+  scroll-snap-align: start;
+}
+
 @layer base {
   /* Fix Chrome autofill background turning white/blue */
   input:-webkit-autofill,
-  input:-webkit-autofill:hover, 
-  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 30px #333 inset !important;
-      -webkit-text-fill-color: white !important;
-      transition: background-color 5000s ease-in-out 0s;
+    -webkit-box-shadow: 0 0 0 30px #333 inset !important;
+    -webkit-text-fill-color: white !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }

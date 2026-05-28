@@ -26,5 +26,9 @@ namespace Netflix.Api.Models
 
         [ForeignKey("UserId")]
         public virtual User? User { get; set; }
+
+        public virtual ICollection<WatchHistory> WatchHistories { get; set; } = new List<WatchHistory>();
+        public virtual ICollection<MyList> MyListItems { get; set; } = new List<MyList>();
+        public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     }
 }

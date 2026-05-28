@@ -1,10 +1,11 @@
-import axios from 'axios';
-import useAuthStore from '../store/authStore';
+import axios from "axios";
+import useAuthStore from "../store/authStore";
+import useProfileStore from "../store/profileStore";
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:5071/api', // Updated to match actual backend port
+  baseURL: "http://localhost:5071/api", // Updated to match actual backend port
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -12,12 +13,19 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     const accessToken = useAuthStore.getState().accessToken;
+    const activeProfile = useProfileStore.getState().activeProfile;
+
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    if (activeProfile?.id) {
+      config.headers["X-Profile-Id"] = activeProfile.id;
+    }
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Interceptor for handling 401 & refreshing token
@@ -36,12 +44,18 @@ axiosClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const { data } = await axios.post('http://localhost:5071/api/auth/refresh-token', `"${refreshToken}"`, {
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const { data } = await axios.post(
+          "http://localhost:5071/api/auth/refresh-token",
+          `"${refreshToken}"`,
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+        );
 
         if (data && data.data) {
-          useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
+          useAuthStore
+            .getState()
+            .setTokens(data.data.accessToken, data.data.refreshToken);
           originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
           return axiosClient(originalRequest);
         }
@@ -52,7 +66,7 @@ axiosClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosClient;

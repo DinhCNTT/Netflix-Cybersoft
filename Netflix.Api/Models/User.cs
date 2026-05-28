@@ -42,5 +42,6 @@ namespace Netflix.Api.Models
         public string? PaymentMethod { get; set; }
 
         public virtual ICollection<Profile> Profiles { get; set; } = new List<Profile>();
+        public virtual ICollection<UserFavoriteMovie> FavoriteMovies { get; set; } = new List<UserFavoriteMovie>();
     }
 }

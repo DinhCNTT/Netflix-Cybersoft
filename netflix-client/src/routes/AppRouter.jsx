@@ -1,20 +1,26 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import AuthLayout from '../components/layouts/AuthLayout';
-import Login from '../pages/Auth/Login';
-import Register from '../pages/Auth/Register';
-import ForgotPassword from '../pages/Auth/ForgotPassword';
-import CheckEmail from '../pages/Auth/CheckEmail';
-import VerifyEmail from '../pages/Auth/VerifyEmail';
-import ChoosePlan from '../pages/Auth/ChoosePlan';
-import Checkout from '../pages/Auth/Checkout';
-import ManageProfiles from '../pages/Profiles/ManageProfiles';
-import EditProfile from '../pages/Profiles/EditProfile';
-import Browse from '../pages/Browse/Browse';
-import useAuthStore from '../store/authStore';
-import useProfileStore from '../store/profileStore';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AuthLayout from "../components/layouts/AuthLayout";
+import Login from "../pages/Auth/Login";
+import Register from "../pages/Auth/Register";
+import ForgotPassword from "../pages/Auth/ForgotPassword";
+import CheckEmail from "../pages/Auth/CheckEmail";
+import VerifyEmail from "../pages/Auth/VerifyEmail";
+import ChoosePlan from "../pages/Auth/ChoosePlan";
+import Checkout from "../pages/Auth/Checkout";
+import ManageProfiles from "../pages/Profiles/ManageProfiles";
+import EditProfile from "../pages/Profiles/EditProfile";
+import Browse from "../pages/Browse/Browse";
+import MyList from "../pages/Browse/MyList";
+import Watch from "../pages/Watch/Watch";
+import useAuthStore from "../store/authStore";
+import useProfileStore from "../store/profileStore";
 
 // Simple protected route component
-const ProtectedRoute = ({ children, requireSubscription = true, requireProfile = false }) => {
+const ProtectedRoute = ({
+  children,
+  requireSubscription = true,
+  requireProfile = false,
+}) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const activeProfile = useProfileStore((state) => state.activeProfile);
@@ -25,8 +31,9 @@ const ProtectedRoute = ({ children, requireSubscription = true, requireProfile =
 
   // Nếu route yêu cầu phải nạp gói, nhưng user chưa nạp -> Đẩy ra chọn gói
   // Lưu ý: claim IsSubscribed từ JWT sẽ lưu dưới dạng string "true"/"false" hoặc boolean
-  const isSubscribed = user?.isSubscribed === true || user?.isSubscribed === "true";
-  
+  const isSubscribed =
+    user?.isSubscribed === true || user?.isSubscribed === "true";
+
   if (requireSubscription && !isSubscribed) {
     return <Navigate to="/choose-plan" replace />;
   }
@@ -63,104 +70,122 @@ const AppRouter = () => {
       <Routes>
         {/* Auth Routes */}
         <Route element={<AuthLayout />}>
-          <Route 
-            path="/login" 
+          <Route
+            path="/login"
             element={
               <PublicRoute>
                 <Login />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/register" 
+          <Route
+            path="/register"
             element={
               <PublicRoute>
                 <Register />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/forgot-password" 
+          <Route
+            path="/forgot-password"
             element={
               <PublicRoute>
                 <ForgotPassword />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/check-email" 
+          <Route
+            path="/check-email"
             element={
               <PublicRoute>
                 <CheckEmail />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/verify-email" 
+          <Route
+            path="/verify-email"
             element={
               <PublicRoute>
                 <VerifyEmail />
               </PublicRoute>
-            } 
+            }
           />
         </Route>
 
         {/* Protected Routes (Subscription Required & Profile Required) */}
-        <Route 
-          path="/browse" 
+        <Route
+          path="/browse"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={true}>
               <Browse />
             </ProtectedRoute>
-          } 
+          }
+        />
+
+        <Route
+          path="/browse/my-list"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <MyList />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/watch/:movieId"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Watch />
+            </ProtectedRoute>
+          }
         />
 
         {/* Protected Routes (Subscription Required, Profile NOT Required) - Profile Management */}
-        <Route 
-          path="/profiles" 
+        <Route
+          path="/profiles"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={false}>
               <ManageProfiles />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/profiles/create" 
+        <Route
+          path="/profiles/create"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={false}>
               <EditProfile />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/profiles/edit/:id" 
+        <Route
+          path="/profiles/edit/:id"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={false}>
               <EditProfile />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Protected Routes (Subscription NOT Required - Payment Flow) */}
-        <Route 
-          path="/choose-plan" 
+        <Route
+          path="/choose-plan"
           element={
             <ProtectedRoute requireSubscription={false}>
               <div className="min-h-screen bg-black w-full overflow-x-hidden font-['Helvetica_Neue',Helvetica,Arial,sans-serif]">
                 <ChoosePlan />
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/checkout" 
+        <Route
+          path="/checkout"
           element={
             <ProtectedRoute requireSubscription={false}>
               <div className="min-h-screen bg-black w-full overflow-x-hidden font-['Helvetica_Neue',Helvetica,Arial,sans-serif]">
                 <Checkout />
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Fallback */}
