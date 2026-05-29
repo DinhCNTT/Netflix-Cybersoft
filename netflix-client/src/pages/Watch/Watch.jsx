@@ -723,7 +723,7 @@ const Watch = () => {
             )}
           </div>
 
-          {seasons.length > 0 && (
+          {seasons.length > 0 && !(seasons.length === 1 && seasons[0].episodes.length === 1) && (
             <div className="mt-5 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
               {seasons.map((season, sIndex) =>
                 season.episodes.map((episode, eIndex) => {
@@ -746,7 +746,7 @@ const Watch = () => {
                       }`}
                     >
                       <div className="font-semibold">
-                        {season.title} • Tap {episode.episodeNumber}
+                        {season.title} • Tập {episode.episodeNumber}
                       </div>
                       <div className="text-xs text-gray-300">
                         {episode.title}

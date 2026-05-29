@@ -21,6 +21,7 @@ const ManageProfiles = () => {
   
   const navigate = useNavigate();
   const setActiveProfile = useProfileStore((state) => state.setActiveProfile);
+  const setProfilesStore = useProfileStore((state) => state.setProfiles);
 
   useEffect(() => {
     fetchProfiles();
@@ -30,6 +31,7 @@ const ManageProfiles = () => {
     try {
       const response = await axiosClient.get('/profile');
       setProfiles(response.data.data);
+      setProfilesStore(response.data.data);
     } catch (error) {
       console.error("Lỗi khi tải hồ sơ:", error);
     } finally {

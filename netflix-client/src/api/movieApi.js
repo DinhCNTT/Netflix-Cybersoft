@@ -101,6 +101,17 @@ export const movieApi = {
     return safeArray(unwrapData(response)).map(mapMovie);
   },
 
+  async discoverContent(params) {
+    const query = new URLSearchParams(params).toString();
+    const response = await axiosClient.get(`/movies/discover?${query}`);
+    return safeArray(unwrapData(response)).map(mapMovie);
+  },
+
+  async getRecommendations(movieId) {
+    const response = await axiosClient.get(`/movies/${movieId}/recommendations`);
+    return safeArray(unwrapData(response)).map(mapMovie);
+  },
+
   async getMovieById(movieId) {
     const response = await axiosClient.get(`/movies/${movieId}`);
     const data = unwrapData(response);

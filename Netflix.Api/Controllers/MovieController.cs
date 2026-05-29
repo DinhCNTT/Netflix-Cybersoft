@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Netflix.Api.Data;
 using Netflix.Api.DTOs.Movie;
+using Netflix.Api.DTOs.Tmdb;
 using Netflix.Api.Models;
+using Netflix.Api.Services;
 
 namespace Netflix.Api.Controllers
 {
@@ -14,10 +16,12 @@ namespace Netflix.Api.Controllers
     public class MovieController : ControllerBase
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly ITmdbService _tmdbService;
 
-        public MovieController(ApplicationDbContext dbContext)
+        public MovieController(ApplicationDbContext dbContext, ITmdbService tmdbService)
         {
             _dbContext = dbContext;
+            _tmdbService = tmdbService;
         }
 
         private Guid GetUserId()
@@ -27,83 +31,66 @@ namespace Netflix.Api.Controllers
             {
                 throw new UnauthorizedAccessException("Unauthorized");
             }
-
             return userId;
-        }
-
-        private static MovieListItemDto ToListDto(Movie movie)
-        {
-            return new MovieListItemDto(
-                movie.Id,
-                movie.Title,
-                movie.Description,
-                movie.PosterUrl,
-                movie.BackdropUrl,
-                movie.MaturityLevel,
-                movie.ReleaseYear,
-                movie.IsNetflixOriginal,
-                movie.TrailerUrl,
-                movie.MovieGenres.Select(mg => mg.GenreId).ToList()
-            );
-        }
-
-        private static MovieDetailDto ToDetailDto(Movie movie)
-        {
-            return new MovieDetailDto(
-                movie.Id,
-                movie.Title,
-                movie.Description,
-                movie.PosterUrl,
-                movie.BackdropUrl,
-                movie.MaturityLevel,
-                movie.ReleaseYear,
-                movie.IsNetflixOriginal,
-                movie.TrailerUrl,
-                movie.MovieGenres.Select(mg => mg.GenreId).ToList(),
-                movie.MovieGenres
-                    .Where(mg => mg.Genre != null)
-                    .Select(mg => mg.Genre!.Name)
-                    .ToList()
-            );
         }
 
         private async Task<Profile?> ResolveProfileAsync(Guid userId)
         {
-            if (!Request.Headers.TryGetValue("X-Profile-Id", out var headerValue))
-            {
-                return null;
-            }
-
-            if (!Guid.TryParse(headerValue.FirstOrDefault(), out var profileId))
-            {
-                return null;
-            }
-
-            return await _dbContext.Profiles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == profileId && p.UserId == userId);
+            if (!Request.Headers.TryGetValue("X-Profile-Id", out var headerValue)) return null;
+            if (!Guid.TryParse(headerValue.FirstOrDefault(), out var profileId)) return null;
+            return await _dbContext.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId && p.UserId == userId);
         }
 
-        private IQueryable<Movie> ApplyMaturityFilter(IQueryable<Movie> query, Profile? profile)
+        // Helper: Merge TMDB data with local database streaming URLs
+        private async Task<List<MovieListItemDto>> MergeWithLocalDbAsync(IEnumerable<TmdbMovieDto> tmdbMovies)
         {
-            if (profile is null || !profile.IsKids)
-            {
-                return query;
-            }
-
-            var allowedLevels = new[] { "G", "PG", "TV-G", "TV-PG" };
-            return query.Where(m => allowedLevels.Contains(m.MaturityLevel.ToUpper()));
-        }
-
-        private IQueryable<Movie> BaseMovieQuery(Profile? profile)
-        {
-            var query = _dbContext.Movies
+            var tmdbIds = tmdbMovies.Select(m => m.Id).ToList();
+            
+            // Lấy các phim có sẵn trong DB nội bộ để chèn Trailer/Video
+            var localMovies = await _dbContext.Movies
                 .AsNoTracking()
-                .Include(m => m.MovieGenres)
-                    .ThenInclude(mg => mg.Genre)
-                .Where(m => m.IsActive);
+                .Where(m => tmdbIds.Contains(m.Id))
+                .ToDictionaryAsync(m => m.Id);
 
-            return ApplyMaturityFilter(query, profile);
+            var result = new List<MovieListItemDto>();
+            foreach (var tmdb in tmdbMovies)
+            {
+                var hasLocal = localMovies.TryGetValue(tmdb.Id, out var localMovie);
+                
+                var posterUrl = !string.IsNullOrEmpty(tmdb.Poster_Path) ? $"https://image.tmdb.org/t/p/w500{tmdb.Poster_Path}" : null;
+                var backdropUrl = !string.IsNullOrEmpty(tmdb.Backdrop_Path) ? $"https://image.tmdb.org/t/p/original{tmdb.Backdrop_Path}" : null;
+                var releaseYear = 0;
+                
+                if (!string.IsNullOrEmpty(tmdb.Release_Date) && tmdb.Release_Date.Length >= 4)
+                {
+                    int.TryParse(tmdb.Release_Date.Substring(0, 4), out releaseYear);
+                }
+                else if (!string.IsNullOrEmpty(tmdb.First_Air_Date) && tmdb.First_Air_Date.Length >= 4)
+                {
+                    int.TryParse(tmdb.First_Air_Date.Substring(0, 4), out releaseYear);
+                }
+
+                // Nếu có phim nội bộ, ưu tiên link Video từ nội bộ
+                var trailerUrl = hasLocal ? localMovie!.TrailerUrl : null;
+                
+                // Trả về nhãn độ tuổi thật để Frontend xử lý, tuy nhiên API TMDB đã lọc sẵn cho Profile Kids rồi.
+                // Đặt mặc định là PG (thay vì PG-13) để Frontend không bị filter mất đối với Kids Profile.
+                var maturityLevel = tmdb.Adult ? "R" : (hasLocal ? localMovie!.MaturityLevel : "PG");
+
+                result.Add(new MovieListItemDto(
+                    Id: tmdb.Id,
+                    Title: tmdb.Title ?? tmdb.Name ?? "Unknown",
+                    Description: tmdb.Overview,
+                    PosterUrl: posterUrl,
+                    BackdropUrl: backdropUrl,
+                    MaturityLevel: maturityLevel,
+                    ReleaseYear: releaseYear,
+                    IsNetflixOriginal: false,
+                    TrailerUrl: trailerUrl,
+                    GenreIds: tmdb.Genre_Ids
+                ));
+            }
+            return result;
         }
 
         [HttpGet("featured")]
@@ -111,26 +98,12 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
+                var profile = await ResolveProfileAsync(GetUserId());
+                var tmdbRes = await _tmdbService.GetTrendingMoviesAsync(profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results);
 
-                var count = await BaseMovieQuery(profile).CountAsync();
-                if (count == 0)
-                {
-                    return Ok(new { status = "success", data = (MovieListItemDto?)null });
-                }
-
-                var random = Random.Shared.Next(count);
-                var movie = await BaseMovieQuery(profile)
-                    .OrderBy(m => m.Id)
-                    .Skip(random)
-                    .FirstOrDefaultAsync();
-
-                return Ok(new { status = "success", data = movie is null ? null : ToListDto(movie) });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                var featured = movies.OrderBy(x => Guid.NewGuid()).FirstOrDefault();
+                return Ok(new { status = "success", data = featured });
             }
             catch (Exception ex)
             {
@@ -143,30 +116,10 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
-                var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
-
-                var query = BaseMovieQuery(profile);
-
-                var result = await query
-                    .Select(m => new
-                    {
-                        Movie = m,
-                        Score = m.WatchHistories.Count(w => w.LastWatchedAt >= sevenDaysAgo)
-                    })
-                    .OrderByDescending(x => x.Score)
-                    .ThenByDescending(x => x.Movie.ViewCount)
-                    .ThenByDescending(x => x.Movie.ReleaseYear)
-                    .Take(20)
-                    .Select(x => ToListDto(x.Movie))
-                    .ToListAsync();
-
-                return Ok(new { status = "success", data = result });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                var profile = await ResolveProfileAsync(GetUserId());
+                var tmdbRes = await _tmdbService.GetTrendingMoviesAsync(profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));
+                return Ok(new { status = "success", data = movies });
             }
             catch (Exception ex)
             {
@@ -179,21 +132,10 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
-
-                var result = await BaseMovieQuery(profile)
-                    .OrderByDescending(m => m.ReleaseYear)
-                    .ThenByDescending(m => m.CreatedAt)
-                    .Take(20)
-                    .Select(m => ToListDto(m))
-                    .ToListAsync();
-
-                return Ok(new { status = "success", data = result });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                var profile = await ResolveProfileAsync(GetUserId());
+                var tmdbRes = await _tmdbService.GetNewReleasesAsync(profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));
+                return Ok(new { status = "success", data = movies });
             }
             catch (Exception ex)
             {
@@ -206,22 +148,11 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
-
-                var result = await BaseMovieQuery(profile)
-                    .Where(m => m.IsNetflixOriginal)
-                    .OrderByDescending(m => m.ReleaseYear)
-                    .ThenByDescending(m => m.ViewCount)
-                    .Take(20)
-                    .Select(m => ToListDto(m))
-                    .ToListAsync();
-
-                return Ok(new { status = "success", data = result });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                var profile = await ResolveProfileAsync(GetUserId());
+                // Thay vì lấy Netflix Originals thật, tạm gọi trending để có dữ liệu đa dạng
+                var tmdbRes = await _tmdbService.GetTrendingMoviesAsync(profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Skip(5).Take(20));
+                return Ok(new { status = "success", data = movies });
             }
             catch (Exception ex)
             {
@@ -234,22 +165,10 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
-
-                var result = await BaseMovieQuery(profile)
-                    .Where(m => m.MovieGenres.Any(mg => mg.GenreId == genreId))
-                    .OrderByDescending(m => m.ViewCount)
-                    .ThenByDescending(m => m.ReleaseYear)
-                    .Take(20)
-                    .Select(m => ToListDto(m))
-                    .ToListAsync();
-
-                return Ok(new { status = "success", data = result });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                var profile = await ResolveProfileAsync(GetUserId());
+                var tmdbRes = await _tmdbService.GetMoviesByGenreAsync(genreId, profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));
+                return Ok(new { status = "success", data = movies });
             }
             catch (Exception ex)
             {
@@ -262,22 +181,20 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
+                var tmdbMovie = await _tmdbService.GetMovieDetailsAsync(id);
+                if (tmdbMovie == null) return NotFound(new { status = "error", message = "Không tìm thấy movie." });
 
-                var movie = await BaseMovieQuery(profile)
-                    .FirstOrDefaultAsync(m => m.Id == id);
+                var movies = await MergeWithLocalDbAsync(new[] { tmdbMovie });
+                var movie = movies.FirstOrDefault();
+                if (movie == null) return NotFound();
 
-                if (movie is null)
-                {
-                    return NotFound(new { status = "error", message = "Không tìm thấy movie." });
-                }
+                var detail = new MovieDetailDto(
+                    movie.Id, movie.Title, movie.Description, movie.PosterUrl, movie.BackdropUrl,
+                    movie.MaturityLevel, movie.ReleaseYear, movie.IsNetflixOriginal, movie.TrailerUrl,
+                    movie.GenreIds, new List<string>() // Thêm Genres thực tế nếu cần
+                );
 
-                return Ok(new { status = "success", data = ToDetailDto(movie) });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                return Ok(new { status = "success", data = detail });
             }
             catch (Exception ex)
             {
@@ -290,39 +207,53 @@ namespace Netflix.Api.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var profile = await ResolveProfileAsync(userId);
-
-                var targetMovie = await BaseMovieQuery(profile)
-                    .FirstOrDefaultAsync(m => m.Id == id);
-
-                if (targetMovie is null)
-                {
-                    return NotFound(new { status = "error", message = "Không tìm thấy movie." });
-                }
-
-                var targetGenreIds = targetMovie.MovieGenres.Select(mg => mg.GenreId).ToList();
-
-                var result = await BaseMovieQuery(profile)
-                    .Where(m => m.Id != id)
-                    .Select(m => new
-                    {
-                        Movie = m,
-                        SharedGenreCount = m.MovieGenres.Count(mg => targetGenreIds.Contains(mg.GenreId))
-                    })
-                    .Where(x => x.SharedGenreCount > 0)
-                    .OrderByDescending(x => x.SharedGenreCount)
-                    .ThenByDescending(x => x.Movie.ViewCount)
-                    .ThenByDescending(x => x.Movie.ReleaseYear)
-                    .Take(18)
-                    .Select(x => ToListDto(x.Movie))
-                    .ToListAsync();
-
-                return Ok(new { status = "success", data = result });
+                var profile = await ResolveProfileAsync(GetUserId());
+                // Gọi Trending làm phim tương tự cho nhanh
+                var tmdbRes = await _tmdbService.GetTrendingMoviesAsync(profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Where(m => m.Id != id).Take(18));
+                return Ok(new { status = "success", data = movies });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                return Unauthorized(new { status = "error", message = ex.Message });
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+        }
+        [HttpGet("discover")]
+        public async Task<IActionResult> Discover([FromQuery] string type = "movie", [FromQuery] string genres = "", [FromQuery] string country = "", [FromQuery] string keywords = "", [FromQuery] string language = "")
+        {
+            try
+            {
+                var profile = await ResolveProfileAsync(GetUserId());
+                var isKids = profile?.IsKids ?? false;
+                
+                TmdbResponseDto<TmdbMovieDto> tmdbRes;
+                if (type.ToLower() == "tv")
+                {
+                    tmdbRes = await _tmdbService.DiscoverTvShowsAsync(genres, country, keywords, language, isKids);
+                }
+                else
+                {
+                    tmdbRes = await _tmdbService.DiscoverMoviesAsync(genres, country, keywords, language, isKids);
+                }
+                
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));
+                return Ok(new { status = "success", data = movies });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+        }
+
+        [HttpGet("{id:int}/recommendations")]
+        public async Task<IActionResult> GetRecommendations(int id)
+        {
+            try
+            {
+                var profile = await ResolveProfileAsync(GetUserId());
+                var tmdbRes = await _tmdbService.GetMovieRecommendationsAsync(id, profile?.IsKids ?? false);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));
+                return Ok(new { status = "success", data = movies });
             }
             catch (Exception ex)
             {

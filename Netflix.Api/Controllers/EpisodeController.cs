@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Netflix.Api.Data;
 using Netflix.Api.DTOs.Episode;
+using Netflix.Api.Services;
 
 namespace Netflix.Api.Controllers
 {
@@ -13,10 +14,12 @@ namespace Netflix.Api.Controllers
     public class EpisodeController : ControllerBase
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly ITmdbService _tmdbService;
 
-        public EpisodeController(ApplicationDbContext dbContext)
+        public EpisodeController(ApplicationDbContext dbContext, ITmdbService tmdbService)
         {
             _dbContext = dbContext;
+            _tmdbService = tmdbService;
         }
 
         private Guid GetUserId()
@@ -50,15 +53,14 @@ namespace Netflix.Api.Controllers
                 }
 
                 var movie = await _dbContext.Movies.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
-                if (movie is null)
-                {
-                    return NotFound(new { status = "error", message = "Không tìm thấy movie." });
-                }
+                var seasons = new List<SeasonDto>();
 
-                var seasons = await _dbContext.Seasons
-                    .AsNoTracking()
-                    .Where(s => s.MovieId == id)
-                    .OrderBy(s => s.SeasonNumber)
+                if (movie != null)
+                {
+                    seasons = await _dbContext.Seasons
+                        .AsNoTracking()
+                        .Where(s => s.MovieId == id)
+                        .OrderBy(s => s.SeasonNumber)
                     .Select(s => new SeasonDto(
                         s.Id,
                         s.SeasonNumber,
@@ -77,13 +79,79 @@ namespace Netflix.Api.Controllers
                     ))
                     .ToListAsync();
 
+                // Dynamic TMDB Mocking
+                if (!seasons.Any())
+                {
+                    var mockHlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"; // Big Buck Bunny 1080p HLS
+                    var tvDetails = await _tmdbService.GetTvShowDetailsAsync(id);
+                    
+                    if (tvDetails != null && tvDetails.Seasons != null && tvDetails.Seasons.Any())
+                    {
+                        int fakeEpId = id * 1000;
+                        foreach(var tmdbSeason in tvDetails.Seasons.Where(s => s.Season_Number > 0))
+                        {
+                            var mockEpisodes = new List<EpisodeDto>();
+                            int epCount = tmdbSeason.Episode_Count > 0 ? tmdbSeason.Episode_Count : 10;
+                            for(int i = 1; i <= epCount; i++)
+                            {
+                                mockEpisodes.Add(new EpisodeDto(
+                                    fakeEpId++, 
+                                    i, 
+                                    $"Tập {i}", 
+                                    mockHlsUrl, 
+                                    45, 
+                                    ""
+                                ));
+                            }
+                            seasons.Add(new SeasonDto(
+                                tmdbSeason.Id, 
+                                tmdbSeason.Season_Number, 
+                                string.IsNullOrEmpty(tmdbSeason.Name) ? $"Mùa {tmdbSeason.Season_Number}" : tmdbSeason.Name,
+                                mockEpisodes
+                            ));
+                        }
+                    }
+
+                    if (!seasons.Any())
+                    {
+                        // Fetch movie details to get the actual title from TMDB
+                        var movieDetails = await _tmdbService.GetMovieDetailsAsync(id);
+                        var title = movieDetails?.Title ?? "Movie";
+
+                        var mockEpisodes = new List<EpisodeDto>
+                        {
+                            new EpisodeDto(
+                                id, 
+                                1, 
+                                "Full Movie", 
+                                mockHlsUrl, 
+                                120, 
+                                ""
+                            )
+                        };
+                        seasons.Add(new SeasonDto(
+                            id, 
+                            1, 
+                            title, 
+                            mockEpisodes
+                        ));
+                    }
+                }
+
+                // If movie is null (not in local DB), fetch from TMDB to get title for the response
+                string responseTitle = movie?.Title ?? "Phim";
+                if (movie == null) {
+                     var movieDetails = await _tmdbService.GetMovieDetailsAsync(id);
+                     if (movieDetails != null) responseTitle = movieDetails.Title ?? movieDetails.Name ?? "Phim";
+                }
+
                 return Ok(new
                 {
                     status = "success",
                     data = new
                     {
-                        movieId = movie.Id,
-                        movieTitle = movie.Title,
+                        movieId = movie?.Id ?? id,
+                        movieTitle = responseTitle,
                         seasons
                     }
                 });

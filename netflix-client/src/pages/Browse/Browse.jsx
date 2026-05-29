@@ -141,7 +141,6 @@ const Browse = () => {
           originals,
           newReleases,
           myList,
-          genres,
           favIds,
         ] = await Promise.all([
           movieApi.getFeaturedMovie(),
@@ -149,87 +148,171 @@ const Browse = () => {
           movieApi.getNetflixOriginals(),
           movieApi.getNewReleases(),
           movieApi.getMyList(),
-          movieApi.getGenres(),
           movieApi.getFavouriteIds(),
         ]);
 
-        const genreRows = await Promise.all(
-          genres.slice(0, 4).map(async (genre) => {
-            const movies = await movieApi.getMoviesByGenre(genre.id);
-            return {
-              key: `genre-${genre.id}`,
-              title: genre.name,
-              movies,
-            };
-          }),
-        );
+        // Hàm trộn ngẫu nhiên mảng để tạo sự thay đổi mỗi lần F5
+        const shuffleArray = (array) => {
+          const newArr = [...array];
+          for (let i = newArr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+          }
+          return newArr;
+        };
 
-        const primaryGenreRow = genreRows[0];
-        const continueWatchingMovies = (
-          myList.length ? myList : originals
-        ).slice(0, 2);
-        const top10Movies = (newReleases.length ? newReleases : trending).slice(
-          0,
-          10,
-        );
-
-        const baseRows = [
-          {
-            key: "asia",
-            title: "Phim va series chau A",
-            movies: (primaryGenreRow?.movies || trending).slice(0, 12),
-            variant: "standard",
-          },
-          {
-            key: "continue",
-            title: `Danh sach Tiep tuc xem cua ${activeProfile?.name || "ban"}`,
-            movies: continueWatchingMovies,
-            variant: "continue",
-          },
-          {
-            key: "top10",
-            title: "Top 10 series tai Viet Nam hom nay",
-            movies: top10Movies,
-            variant: "top10",
-          },
-          {
-            key: "mylist",
-            title: "Danh sach cua toi",
-            movies: myList,
-            variant: "standard",
-          },
+        // Cấu hình các hàng "Của Netflix" (Người lớn)
+        const ADULT_ROW_CONFIGS = [
+          { key: "romance_kr", type: "discover", params: { type: "tv", country: "KR", genres: "10749" }, title: "Series Hàn Quốc lãng mạn" },
+          { key: "anime", type: "discover", params: { type: "tv", language: "ja", genres: "16" }, title: "Anime" },
+          { key: "heist", type: "discover", params: { type: "movie", keywords: "9759" }, title: "Ai mà không mê những phi vụ?" },
+          { key: "thriller_us", type: "discover", params: { type: "movie", country: "US", genres: "53" }, title: "Phim Mỹ lý thú" },
+          { key: "drama_kr_triangle", type: "discover", params: { type: "tv", country: "KR", genres: "18", keywords: "12554" }, title: "Phim chính kịch Hàn Quốc về tình tay ba" },
+          { key: "comedy_hollywood", type: "discover", params: { type: "movie", country: "US", genres: "35" }, title: "Phim hài Hollywood" },
+          { key: "eu_us_series", type: "discover", params: { type: "tv", country: "US,GB" }, title: "Series Âu – Mỹ" },
+          { key: "asia_movies", type: "discover", params: { type: "movie", country: "KR,JP,CN,TH,TW" }, title: "Phim và series châu Á" },
+          { key: "scifi", type: "discover", params: { type: "movie", genres: "878" }, title: "Phim khoa học viễn tưởng" },
+          { key: "action", type: "discover", params: { type: "movie", genres: "28" }, title: "Hành động & phiêu lưu" },
+          { key: "documentary", type: "discover", params: { type: "movie", genres: "99" }, title: "Phim tài liệu" },
+          { key: "horror", type: "discover", params: { type: "movie", genres: "27" }, title: "Phim kinh dị" },
+          { key: "family", type: "discover", params: { type: "movie", genres: "10751" }, title: "Gia đình cùng xem" },
+          { key: "crime", type: "discover", params: { type: "movie", genres: "80" }, title: "Phim tội phạm" },
+          { key: "reality", type: "discover", params: { type: "tv", genres: "10764" }, title: "Truyền hình thực tế" },
         ];
 
-        const kidsFilteredRows = isKids
-          ? [...baseRows, ...genreRows.slice(1)].map((row) => ({
-              ...row,
-              movies: row.movies.filter((movie) =>
-                ["G", "PG", "TV-G", "TV-PG"].includes(
-                  (movie.maturityLevel || "").toUpperCase(),
-                ),
-              ),
-            }))
-          : [...baseRows, ...genreRows.slice(1)];
+        // Cấu hình các hàng dành riêng cho Trẻ em
+        const KIDS_ROW_CONFIGS = [
+          { key: "kids_animation", type: "discover", params: { type: "movie", genres: "16" }, title: "Phim hoạt hình cực vui" },
+          { key: "kids_family", type: "discover", params: { type: "movie", genres: "10751" }, title: "Gia đình cùng xem" },
+          { key: "kids_comedy", type: "discover", params: { type: "movie", genres: "35" }, title: "Phim hài hước" },
+          { key: "kids_adventure", type: "discover", params: { type: "movie", genres: "12" }, title: "Phiêu lưu kỳ thú" },
+          { key: "kids_fantasy", type: "discover", params: { type: "movie", genres: "14" }, title: "Thế giới phép thuật" },
+          { key: "kids_music", type: "discover", params: { type: "movie", genres: "10402" }, title: "Âm nhạc rộn rã" },
+          { key: "kids_tv_animation", type: "discover", params: { type: "tv", genres: "16" }, title: "Phim hoạt hình dài tập" },
+          { key: "kids_action", type: "discover", params: { type: "movie", genres: "28" }, title: "Hành động mãn nhãn" },
+        ];
 
-        const candidateMovies = [
+        const ROW_CONFIGS = isKids ? KIDS_ROW_CONFIGS : ADULT_ROW_CONFIGS;
+
+        // Lấy tất cả cấu hình, xáo trộn ngẫu nhiên để có rất nhiều hàng như Netflix thật
+        const shuffledConfigs = shuffleArray(ROW_CONFIGS);
+        const dynamicRowsData = await Promise.all(
+          shuffledConfigs.map(async (config) => {
+            const movies = await movieApi.discoverContent(config.params);
+            return {
+              key: config.key,
+              title: config.title,
+              movies: shuffleArray(movies)
+            };
+          })
+        );
+
+        // Hàng "Của Bạn": Vì bạn đã thích...
+        let recommendationRow = null;
+        if (myList && myList.length > 0) {
+           const randomMyListMovie = myList[Math.floor(Math.random() * myList.length)];
+           try {
+             const recommendedMovies = await movieApi.getRecommendations(randomMyListMovie.id);
+             if (recommendedMovies && recommendedMovies.length > 0) {
+                 recommendationRow = {
+                     key: `rec-${randomMyListMovie.id}`,
+                     title: `Vì bạn đã thích ${randomMyListMovie.title}`,
+                     movies: recommendedMovies,
+                     variant: "standard"
+                 };
+             }
+           } catch (e) {
+             console.error("Lỗi khi tải phim gợi ý:", e);
+           }
+        }
+
+        const continueWatchingMovies = (myList.length ? myList : originals);
+        const top10Movies = (newReleases.length ? newReleases : trending).slice(0, 10);
+
+        const baseRows = [];
+        
+        if (recommendationRow) baseRows.push(recommendationRow);
+
+        baseRows.push({
+            key: "continue",
+            title: `Danh sách Tiếp tục xem của ${activeProfile?.name || "bạn"}`,
+            movies: continueWatchingMovies,
+            variant: "continue",
+        });
+
+        // Chèn 2 hàng động (Của Netflix)
+        baseRows.push(...dynamicRowsData.slice(0, 2));
+
+        baseRows.push({
+            key: "top10",
+            title: "Top 10 series tại Việt Nam hôm nay",
+            movies: top10Movies,
+            variant: "top10",
+        });
+
+        baseRows.push({
+            key: "mylist",
+            title: "Danh sách của tôi",
+            movies: myList,
+            variant: "standard",
+        });
+
+        // Chèn các hàng động còn lại
+        baseRows.push(...dynamicRowsData.slice(2));
+
+        const seenIds = new Set();
+        const kidsFilteredRows = baseRows.map((row) => {
+          let moviesToKeep = row.movies || [];
+
+          if (isKids) {
+            moviesToKeep = moviesToKeep.filter((movie) =>
+              ["G", "PG", "TV-G", "TV-PG"].includes(
+                (movie.maturityLevel || "").toUpperCase(),
+              ),
+            );
+          }
+
+          if (row.key === "asia" || row.key.startsWith("rec-")) {
+            moviesToKeep = moviesToKeep.filter((m) => {
+              if (seenIds.has(m.id)) return false;
+              seenIds.add(m.id);
+              return true;
+            });
+          }
+
+          return { ...row, movies: moviesToKeep };
+        });
+
+        let candidateMovies = [
           featured,
           ...trending,
           ...originals,
           ...newReleases,
           ...myList,
-          ...genreRows.flatMap((row) => row.movies || []),
+          ...dynamicRowsData.flatMap((row) => row.movies || []),
         ].filter(Boolean);
 
-        const firstMovieWithTrailer = candidateMovies.find((movie) =>
-          Boolean(movie?.trailerUrl),
-        );
+        if (isKids) {
+          candidateMovies = candidateMovies.filter((movie) =>
+            ["G", "PG", "TV-G", "TV-PG"].includes(
+              (movie.maturityLevel || "").toUpperCase(),
+            ),
+          );
+        }
+
+        // Ưu tiên chọn ngẫu nhiên một phim có Trailer (đối với profile người lớn)
+        const moviesWithTrailers = candidateMovies.filter((movie) => Boolean(movie?.trailerUrl));
+        const randomTrailerMovie = moviesWithTrailers.length > 0 
+           ? moviesWithTrailers[Math.floor(Math.random() * moviesWithTrailers.length)] 
+           : null;
+
+        // Hoặc chọn ngẫu nhiên một phim bất kỳ (đối với profile trẻ em không có sẵn trailer)
+        const randomAnyMovie = candidateMovies.length > 0
+           ? candidateMovies[Math.floor(Math.random() * candidateMovies.length)]
+           : null;
 
         setFeaturedMovie(
-          firstMovieWithTrailer ||
-            featured ||
-            trending[0] ||
-            originals[0] ||
-            null,
+          randomTrailerMovie || randomAnyMovie || null
         );
         setFavouriteIds(favIds);
         setRows(kidsFilteredRows);

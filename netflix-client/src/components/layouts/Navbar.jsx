@@ -5,6 +5,7 @@ import useAuthStore from "../../store/authStore";
 import useProfileStore from "../../store/profileStore";
 import MobileMenu from "./MobileMenu";
 import AccountMenu from "./AccountMenu";
+import PinModal from "../modals/PinModal";
 
 const TOP_OFFSET = 66;
 
@@ -17,7 +18,8 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
-  const { activeProfile, clearProfile } = useProfileStore();
+  const { activeProfile, clearProfile, setActiveProfile } = useProfileStore();
+  const [selectedProfileForPin, setSelectedProfileForPin] = useState(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -75,6 +77,23 @@ const Navbar = () => {
     clearProfile();
     navigate("/profiles");
     setShowAccountMenu(false);
+  };
+
+  const handleSelectProfile = (profile) => {
+    if (profile.hasPin) {
+      setSelectedProfileForPin(profile);
+    } else {
+      setActiveProfile(profile);
+      window.location.href = '/browse';
+    }
+  };
+
+  const handlePinSuccess = () => {
+    if (selectedProfileForPin) {
+      setActiveProfile(selectedProfileForPin);
+      setSelectedProfileForPin(null);
+      window.location.href = '/browse';
+    }
   };
 
   const toggleAccountMenu = () => {
@@ -162,11 +181,17 @@ const Navbar = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 md:gap-5">
+      <div className="flex items-center gap-4 md:gap-5">
         <Search className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
-        <span className="hidden cursor-pointer text-sm text-white md:block">
-          {activeProfile?.isKids ? "Trẻ em" : ""}
-        </span>
+        {!activeProfile?.isKids && (
+          <p 
+             className="hidden cursor-pointer text-sm text-white hover:text-gray-300 md:block"
+             onClick={() => navigate("/profiles")}
+          >
+            Trẻ em
+          </p>
+        )}
+        
         <div className="relative">
           <Bell className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e50914] px-1 text-[10px] font-semibold leading-none text-white">
@@ -174,33 +199,40 @@ const Navbar = () => {
           </span>
         </div>
 
-        <div
-          ref={accountMenuRef}
-          className="relative flex cursor-pointer items-center gap-2"
-        >
+        {/* Sử dụng group hover để hiện menu giống hệt web Netflix */}
+        <div className="group relative flex cursor-pointer items-center gap-2">
           <img
             src={activeProfile?.avatarUrl || "/images/default-blue.png"}
             alt="Profile"
             className="h-7 w-7 rounded object-cover lg:h-8 lg:w-8"
           />
-          <button
-            type="button"
-            onClick={toggleAccountMenu}
-            aria-label="Toggle account menu"
-          >
-            <ChevronDown
-              className={`h-4 w-4 text-white transition-transform duration-300 ${showAccountMenu ? "rotate-180" : ""}`}
-            />
-          </button>
-          <AccountMenu
-            visible={showAccountMenu}
-            profile={activeProfile}
-            onSwitchProfile={handleSwitchProfile}
-            onLogout={handleLogout}
-            onClose={() => setShowAccountMenu(false)}
+          <ChevronDown
+            className="h-4 w-4 text-white transition-transform duration-300 group-hover:rotate-180 group-hover:text-gray-300"
           />
+          
+          {/* Vùng vô hình kéo dài để bridge hover từ avatar xuống menu */}
+          <div className="pointer-events-none absolute inset-0 -bottom-8 group-hover:pointer-events-auto"></div>
+
+          <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute right-0 top-[calc(100%+12px)]">
+            <AccountMenu
+              visible={true}
+              profile={activeProfile}
+              onSwitchProfile={handleSwitchProfile}
+              onSelectProfile={handleSelectProfile}
+              onLogout={handleLogout}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Fullscreen PIN Modal for profile switching inside Navbar */}
+      {selectedProfileForPin && (
+        <PinModal
+          profile={selectedProfileForPin}
+          onClose={() => setSelectedProfileForPin(null)}
+          onSuccess={handlePinSuccess}
+        />
+      )}
     </nav>
   );
 };

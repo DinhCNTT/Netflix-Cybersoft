@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Netflix.Api.Data;
 using Netflix.Api.DTOs.Movie;
 using Netflix.Api.Models;
+using Netflix.Api.Services;
 
 namespace Netflix.Api.Controllers
 {
@@ -14,10 +15,12 @@ namespace Netflix.Api.Controllers
     public class MyListController : ControllerBase
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly ITmdbService _tmdbService;
 
-        public MyListController(ApplicationDbContext dbContext)
+        public MyListController(ApplicationDbContext dbContext, ITmdbService tmdbService)
         {
             _dbContext = dbContext;
+            _tmdbService = tmdbService;
         }
 
         private Guid GetUserId()
@@ -113,12 +116,29 @@ namespace Netflix.Api.Controllers
                 var profile = await ResolveProfileAsync(userId);
 
                 var movieExists = await _dbContext.Movies
-                    .AsNoTracking()
-                    .AnyAsync(m => m.Id == request.MovieId && m.IsActive);
+                    .AnyAsync(m => m.Id == request.MovieId);
 
                 if (!movieExists)
                 {
-                    return NotFound(new { status = "error", message = "Movie không tồn tại." });
+                    // Lấy từ TMDB để lưu vào DB
+                    var tmdbMovie = await _tmdbService.GetMovieDetailsAsync(request.MovieId);
+                    if (tmdbMovie == null)
+                    {
+                        return NotFound(new { status = "error", message = "Movie không tồn tại trên TMDB." });
+                    }
+
+                    _dbContext.Movies.Add(new Movie
+                    {
+                        Id = tmdbMovie.Id,
+                        Title = tmdbMovie.Title ?? tmdbMovie.Name ?? "Unknown",
+                        Description = tmdbMovie.Overview,
+                        PosterUrl = tmdbMovie.Poster_Path != null ? $"https://image.tmdb.org/t/p/w500{tmdbMovie.Poster_Path}" : null,
+                        BackdropUrl = tmdbMovie.Backdrop_Path != null ? $"https://image.tmdb.org/t/p/original{tmdbMovie.Backdrop_Path}" : null,
+                        MaturityLevel = tmdbMovie.Adult ? "R" : "PG",
+                        ReleaseYear = int.TryParse((tmdbMovie.Release_Date ?? tmdbMovie.First_Air_Date ?? "0000").Substring(0, 4), out var yr) ? yr : DateTime.UtcNow.Year,
+                        IsActive = true
+                    });
+                    await _dbContext.SaveChangesAsync();
                 }
 
                 var exists = await _dbContext.MyLists

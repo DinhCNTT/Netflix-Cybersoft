@@ -31,7 +31,7 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
     if (upper.includes("R") || upper.includes("18")) {
       return "18+";
     }
-    if (upper.includes("PG") || upper.includes("13")) {
+    if (upper === "PG-13" || upper === "TV-14" || upper.includes("13") || upper.includes("14")) {
       return "13+";
     }
 
@@ -51,7 +51,12 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
     const preparePlaybackSource = async () => {
       clearAuthObjectUrl();
 
-      const sourceCandidate = trailerUrl || DEFAULT_HERO_TRAILER;
+      if (!trailerUrl) {
+        setPlaybackSrc("");
+        return;
+      }
+
+      const sourceCandidate = trailerUrl;
 
       const isHlsStream = /\.m3u8(\?|$)/i.test(sourceCandidate);
       const isLikelyProtected = /\/api\//i.test(sourceCandidate);
@@ -86,7 +91,7 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
         }
       } catch (error) {
         if (!disposed) {
-          setPlaybackSrc(DEFAULT_HERO_TRAILER);
+          setPlaybackSrc("");
         }
       }
     };
