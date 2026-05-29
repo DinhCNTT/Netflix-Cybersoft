@@ -78,6 +78,7 @@ namespace Netflix.Api.Controllers
                             .ToList()
                     ))
                     .ToListAsync();
+                }
 
                 // Dynamic TMDB Mocking
                 if (!seasons.Any())
