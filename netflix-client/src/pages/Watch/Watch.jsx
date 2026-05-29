@@ -8,6 +8,11 @@ import {
   Play,
   SkipBack,
   SkipForward,
+  RotateCcw,
+  RotateCw,
+  MessageSquare,
+  Gauge,
+  Layers,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -70,6 +75,13 @@ const Watch = () => {
   const [selectedQuality, setSelectedQuality] = useState("auto");
   const [qualityLevelMap, setQualityLevelMap] = useState({});
   const [autoNextCountdown, setAutoNextCountdown] = useState(null);
+  
+  // New State for UI
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showEpisodesMenu, setShowEpisodesMenu] = useState(false);
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const [clickEffect, setClickEffect] = useState(null);
 
   const selectedSeason = seasons[seasonIndex] || null;
   const selectedEpisode = selectedSeason?.episodes?.[episodeIndex] || null;
@@ -413,6 +425,13 @@ const Watch = () => {
     const video = videoRef.current;
     if (!video) return;
 
+    // Unmute on first user interaction (Chrome autoplay policy requires initial muted)
+    if (video.muted) {
+      video.muted = false;
+      video.volume = volume;
+      setIsMuted(false);
+    }
+
     if (video.paused) {
       await video.play();
     } else {
@@ -460,6 +479,28 @@ const Watch = () => {
     setIsMuted(video.muted);
   };
 
+  const handlePlaybackRateChange = (rate) => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    video.playbackRate = rate;
+    setPlaybackRate(rate);
+    setShowSpeedMenu(false);
+  };
+
+  const handleScreenClick = (e) => {
+    if (e.target.closest('.controls-overlay')) return;
+    
+    const video = videoRef.current;
+    if (!video) return;
+
+    const willPlay = video.paused;
+    togglePlay();
+    
+    setClickEffect(willPlay ? 'play' : 'pause');
+    setTimeout(() => setClickEffect(null), 500);
+  };
+
   const toggleFullscreen = async () => {
     if (!containerRef.current) {
       return;
@@ -495,26 +536,26 @@ const Watch = () => {
     currentTime >= INTRO_START_SECONDS && currentTime <= INTRO_END_SECONDS;
 
   const subtitleTrack = useMemo(() => {
-    if (!selectedEpisode?.subtitleUrl || subtitleLang === "off") {
+    if (subtitleLang === "off") {
       return null;
     }
 
+    const src = subtitleLang === "vi" ? "/subtitles/vi.vtt" : "/subtitles/en.vtt";
+
     return {
-      src: selectedEpisode.subtitleUrl,
-      label: subtitleLang === "vi" ? "Tieng Viet" : "English",
+      src,
+      label: subtitleLang === "vi" ? "Tiếng Việt" : "English",
       lang: subtitleLang,
     };
-  }, [selectedEpisode?.subtitleUrl, subtitleLang]);
+  }, [subtitleLang]);
 
   const subtitleOptions = useMemo(() => {
-    const options = [{ value: "off", label: "CC Off" }];
-    if (selectedEpisode?.subtitleUrl) {
-      options.push({ value: "vi", label: "Tieng Viet" });
-      options.push({ value: "en", label: "English" });
-    }
-
-    return options;
-  }, [selectedEpisode?.subtitleUrl]);
+    return [
+      { value: "off", label: "CC Off" },
+      { value: "vi", label: "Tiếng Việt" },
+      { value: "en", label: "English" },
+    ];
+  }, []);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -554,6 +595,7 @@ const Watch = () => {
         ref={videoRef}
         className="absolute inset-0 h-full w-full bg-black object-contain"
         playsInline
+        muted
       >
         {subtitleTrack && (
           <track
@@ -569,196 +611,220 @@ const Watch = () => {
 
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
+        onClick={handleScreenClick}
       >
-        <div className="absolute left-0 right-0 top-0 bg-gradient-to-b from-black/85 to-transparent p-6">
+        <div className="absolute left-0 right-0 top-0 bg-gradient-to-b from-black/85 to-transparent p-6 controls-overlay">
           <button
             type="button"
             onClick={() => navigate("/browse")}
-            className="inline-flex items-center gap-2 rounded bg-black/50 px-4 py-2 text-sm hover:bg-black/70"
+            className="inline-flex items-center justify-center rounded-full p-2 hover:bg-black/40 transition"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back
+            <ArrowLeft className="h-8 w-8" />
           </button>
-          <h1 className="mt-4 text-xl font-bold md:text-2xl">
-            {movie?.title || "Now Playing"}
-          </h1>
-          {selectedEpisode && (
-            <p className="mt-1 text-sm text-gray-300">
-              {selectedSeason?.title} • Tap {selectedEpisode.episodeNumber}:{" "}
-              {selectedEpisode.title}
-            </p>
-          )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 md:p-8">
-          <div className="mb-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="rounded-full bg-white p-3 text-black hover:bg-gray-200"
-            >
-              {isPlaying ? (
-                <Pause className="h-5 w-5 fill-black" />
-              ) : (
-                <Play className="h-5 w-5 fill-black" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => seekBy(-10)}
-              className="rounded-full bg-white/10 p-3 hover:bg-white/20"
-            >
-              <SkipBack className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => seekBy(10)}
-              className="rounded-full bg-white/10 p-3 hover:bg-white/20"
-            >
-              <SkipForward className="h-5 w-5" />
-            </button>
-
-            <div className="ml-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="rounded-full bg-white/10 p-2 hover:bg-white/20"
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4" />
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </button>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 md:p-8 controls-overlay">
+          
+          {/* Timeline / Progress Bar */}
+          <div className="group mb-4 flex items-center gap-4 text-sm font-semibold text-white">
+            <span className="w-12 text-center">{formatTime(currentTime)}</span>
+            <div className="relative flex-1 flex items-center h-4 cursor-pointer">
               <input
                 type="range"
                 min="0"
-                max="1"
-                step="0.05"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
+                max="100"
+                value={Number.isFinite(progressPercent) ? progressPercent : 0}
+                onChange={handleProgressChange}
+                className="absolute inset-0 w-full h-1 appearance-none bg-gray-600 outline-none rounded-full transition-all group-hover:h-2 z-10"
+                style={{
+                  background: `linear-gradient(to right, #e50914 ${progressPercent}%, #555 ${progressPercent}%)`,
+                }}
               />
             </div>
+            <span className="w-12 text-center">{formatTime(duration - currentTime)}</span>
+          </div>
 
-            <div className="ml-auto flex items-center gap-2 text-sm">
-              <label className="text-gray-300">CC</label>
-              <select
-                value={subtitleLang}
-                onChange={(event) => setSubtitleLang(event.target.value)}
-                className="rounded bg-black/60 px-2 py-1"
-              >
-                {subtitleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              <label className="ml-2 text-gray-300">Quality</label>
-              <select
-                value={selectedQuality}
-                onChange={handleQualityChange}
-                className="rounded bg-black/60 px-2 py-1"
-              >
-                {qualities.map((quality) => (
-                  <option key={quality.value} value={quality.value}>
-                    {quality.label}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="rounded-full bg-white/10 p-2 hover:bg-white/20"
-              >
-                {isFullscreen ? (
-                  <Minimize className="h-4 w-4" />
-                ) : (
-                  <Maximize className="h-4 w-4" />
-                )}
+          {/* Controls Bar */}
+          <div className="flex items-center justify-between relative">
+            
+            {/* Left Controls */}
+            <div className="flex items-center gap-6">
+              <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
+                {isPlaying ? <Pause className="h-8 w-8 fill-white" /> : <Play className="h-8 w-8 fill-white" />}
               </button>
+              <button onClick={() => seekBy(-10)} className="text-white hover:scale-110 transition-transform">
+                <RotateCcw className="h-7 w-7" />
+              </button>
+              <button onClick={() => seekBy(10)} className="text-white hover:scale-110 transition-transform">
+                <RotateCw className="h-7 w-7" />
+              </button>
+              
+              {/* Volume Control */}
+              <div className="group relative flex items-center h-8">
+                <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform peer">
+                  {isMuted || volume === 0 ? <VolumeX className="h-7 w-7" /> : <Volume2 className="h-7 w-7" />}
+                </button>
+                <div className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 h-28 w-8 rounded bg-zinc-900/95 peer-hover:flex group-hover:flex flex-col items-center justify-center shadow-lg z-50">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    className="h-20 cursor-pointer appearance-none bg-transparent outline-none accent-red-600"
+                    style={{ WebkitAppearance: 'slider-vertical' }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="mb-2 flex items-center gap-2 text-xs text-gray-200 md:text-sm">
-            <span>{formatTime(currentTime)}</span>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={Number.isFinite(progressPercent) ? progressPercent : 0}
-              onChange={handleProgressChange}
-              className="w-full accent-red-600"
-            />
-            <span>{formatTime(duration)}</span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {skipIntroVisible && (
-              <button
-                type="button"
-                onClick={() => seekBy(INTRO_END_SECONDS - currentTime)}
-                className="rounded bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200"
-              >
-                Skip Intro
-              </button>
-            )}
-
-            {hasNextEpisode && (
-              <button
-                type="button"
-                onClick={goToNextEpisode}
-                className="rounded bg-white/15 px-4 py-2 text-sm font-semibold hover:bg-white/25"
-              >
-                Next Episode
-              </button>
-            )}
-
-            {autoNextCountdown !== null && (
-              <p className="text-sm text-gray-200">
-                Tu dong chuyen tap sau sau {autoNextCountdown}s
-              </p>
-            )}
-          </div>
-
-          {seasons.length > 0 && !(seasons.length === 1 && seasons[0].episodes.length === 1) && (
-            <div className="mt-5 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {seasons.map((season, sIndex) =>
-                season.episodes.map((episode, eIndex) => {
-                  const active =
-                    sIndex === seasonIndex && eIndex === episodeIndex;
-                  return (
-                    <button
-                      type="button"
-                      key={`${season.id}-${episode.id}`}
-                      onClick={() => {
-                        clearAutoNext();
-                        pendingResumeRef.current = 0;
-                        setSeasonIndex(sIndex);
-                        setEpisodeIndex(eIndex);
-                      }}
-                      className={`rounded border px-3 py-2 text-left text-sm transition ${
-                        active
-                          ? "border-red-500 bg-red-950/50"
-                          : "border-white/20 bg-black/30 hover:border-white/50"
-                      }`}
-                    >
-                      <div className="font-semibold">
-                        {season.title} • Tập {episode.episodeNumber}
-                      </div>
-                      <div className="text-xs text-gray-300">
-                        {episode.title}
-                      </div>
-                    </button>
-                  );
-                }),
+            {/* Center Title */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex flex-col items-center text-white pointer-events-none">
+              <h2 className="text-lg font-bold">{movie?.title || "Now Playing"}</h2>
+              {selectedEpisode && (
+                <p className="text-sm text-gray-300">
+                  {selectedSeason?.title} • Tập {selectedEpisode.episodeNumber}
+                </p>
               )}
             </div>
-          )}
+
+            {/* Right Controls */}
+            <div className="flex items-center gap-6 text-white">
+              {skipIntroVisible && (
+                <button onClick={() => seekBy(INTRO_END_SECONDS - currentTime)} className="rounded border border-white/40 bg-black/60 px-4 py-1.5 text-sm font-semibold hover:bg-white hover:text-black transition">
+                  Bỏ qua đoạn giới thiệu
+                </button>
+              )}
+
+              {hasNextEpisode && (
+                <button onClick={goToNextEpisode} className="hover:scale-110 transition-transform" title="Tập tiếp theo">
+                  <SkipForward className="h-7 w-7 fill-white" />
+                </button>
+              )}
+              
+              {/* Speed Menu */}
+              <div className="relative">
+                <button onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowEpisodesMenu(false); setShowSubtitleMenu(false); }} className="hover:scale-110 transition-transform">
+                  <Gauge className="h-7 w-7" />
+                </button>
+                {showSpeedMenu && (
+                  <div className="absolute bottom-16 right-0 w-[480px] bg-[#232323] p-6 shadow-2xl z-50 rounded-sm">
+                    <h3 className="mb-10 text-2xl font-medium text-white">Tốc độ phát lại</h3>
+                    
+                    <div className="relative flex items-center justify-between px-4">
+                      {/* Horizontal Line connecting dots */}
+                      <div className="absolute left-4 right-4 top-1/2 h-[2px] -translate-y-1/2 bg-gray-500 z-0"></div>
+                      
+                      {/* Dots and Labels */}
+                      {[0.5, 0.75, 1, 1.25, 1.5].map((rate) => {
+                        const isActive = playbackRate === rate;
+                        return (
+                          <div key={rate} className="relative z-10 flex flex-col items-center group cursor-pointer" onClick={() => handlePlaybackRateChange(rate)}>
+                            {/* Dot Container */}
+                            <div className="flex h-8 w-8 items-center justify-center">
+                              {isActive ? (
+                                <div className="flex h-[26px] w-[26px] items-center justify-center rounded-full border-[3px] border-gray-400 bg-[#232323]">
+                                  <div className="h-3.5 w-3.5 rounded-full bg-white"></div>
+                                </div>
+                              ) : (
+                                <div className="h-3.5 w-3.5 rounded-full bg-gray-300 group-hover:scale-125 transition-transform"></div>
+                              )}
+                            </div>
+                            
+                            {/* Label */}
+                            <div className={`absolute top-10 w-28 text-center text-xl tracking-wide ${isActive ? 'text-white font-medium' : 'text-gray-300 hover:text-white transition-colors'}`}>
+                              {rate === 1 ? (
+                                <div className="leading-snug">
+                                  1x (Bình<br/>thường)
+                                </div>
+                              ) : (
+                                `${rate}x`
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Add bottom padding to account for absolute labels */}
+                    <div className="h-16"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Episodes List Menu */}
+              {seasons.length > 0 && !(seasons.length === 1 && seasons[0].episodes.length === 1) && (
+                <div className="relative">
+                  <button onClick={() => { setShowEpisodesMenu(!showEpisodesMenu); setShowSpeedMenu(false); setShowSubtitleMenu(false); }} className="hover:scale-110 transition-transform">
+                    <Layers className="h-7 w-7" />
+                  </button>
+                  {showEpisodesMenu && (
+                    <div className="absolute bottom-12 right-0 w-72 max-h-[60vh] overflow-y-auto rounded bg-zinc-900/95 shadow-lg border border-white/10 custom-scrollbar flex flex-col z-50">
+                      <h3 className="sticky top-0 bg-zinc-900/95 p-4 text-base font-semibold border-b border-gray-700 z-10">Danh sách tập</h3>
+                      <div className="p-2">
+                        {seasons.map((season, sIndex) =>
+                          season.episodes.map((episode, eIndex) => {
+                            const active = sIndex === seasonIndex && eIndex === episodeIndex;
+                            return (
+                              <button
+                                key={`${season.id}-${episode.id}`}
+                                onClick={() => {
+                                  clearAutoNext();
+                                  pendingResumeRef.current = 0;
+                                  setSeasonIndex(sIndex);
+                                  setEpisodeIndex(eIndex);
+                                  setShowEpisodesMenu(false);
+                                }}
+                                className={`w-full flex flex-col text-left p-3 rounded mb-1 transition ${active ? 'bg-white/20 font-bold border-l-4 border-red-600' : 'hover:bg-white/10'}`}
+                              >
+                                <span className="text-sm">Tập {episode.episodeNumber}: {episode.title}</span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Subtitles Menu */}
+              <div className="relative">
+                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowEpisodesMenu(false); setShowSpeedMenu(false); }} className="hover:scale-110 transition-transform">
+                  <MessageSquare className="h-7 w-7" />
+                </button>
+                {showSubtitleMenu && (
+                  <div className="absolute bottom-12 right-0 w-48 rounded bg-zinc-900/95 p-4 shadow-lg border border-white/10 z-50">
+                    <h3 className="mb-3 text-base font-semibold text-center border-b border-gray-700 pb-2">Phụ đề</h3>
+                    <div className="flex flex-col">
+                      {subtitleOptions.map((option) => (
+                        <button key={option.value} onClick={() => { setSubtitleLang(option.value); setShowSubtitleMenu(false); }} className={`py-1.5 text-left hover:text-white transition ${subtitleLang === option.value ? 'text-white font-bold text-lg' : 'text-gray-400 text-sm'}`}>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={toggleFullscreen} className="hover:scale-110 transition-transform ml-2">
+                {isFullscreen ? <Minimize className="h-7 w-7" /> : <Maximize className="h-7 w-7" />}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Click Effect Overlay */}
+      {clickEffect && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full bg-black/60 p-6 animate-pulse transition-transform scale-150 duration-500">
+          {clickEffect === 'play' ? (
+            <Play className="h-20 w-20 fill-white text-white opacity-80" />
+          ) : (
+            <Pause className="h-20 w-20 fill-white text-white opacity-80" />
+          )}
+        </div>
+      )}
     </main>
   );
 };

@@ -125,7 +125,7 @@ const Navbar = () => {
             }}
           />
         </Link>
-        <ul className="hidden items-center gap-5 text-[13px] font-medium tracking-[0.01em] text-[#e5e5e5] lg:flex xl:gap-6">
+        <ul className="hidden items-center gap-5 text-[16px] font-medium tracking-[0.01em] text-[#e5e5e5] lg:flex xl:gap-6">
           <li>
             <button
               type="button"
@@ -183,10 +183,9 @@ const Navbar = () => {
 
       <div className="flex items-center gap-4 md:gap-5">
         <Search className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
-        {!activeProfile?.isKids && (
+        {activeProfile?.isKids && (
           <p 
-             className="hidden cursor-pointer text-sm text-white hover:text-gray-300 md:block"
-             onClick={() => navigate("/profiles")}
+             className="hidden text-[16px] font-bold text-white md:block"
           >
             Trẻ em
           </p>
