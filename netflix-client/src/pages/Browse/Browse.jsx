@@ -300,19 +300,13 @@ const Browse = () => {
           );
         }
 
-        // Ưu tiên chọn ngẫu nhiên một phim có Trailer (đối với profile người lớn)
-        const moviesWithTrailers = candidateMovies.filter((movie) => Boolean(movie?.trailerUrl));
-        const randomTrailerMovie = moviesWithTrailers.length > 0 
-           ? moviesWithTrailers[Math.floor(Math.random() * moviesWithTrailers.length)] 
-           : null;
-
-        // Hoặc chọn ngẫu nhiên một phim bất kỳ (đối với profile trẻ em không có sẵn trailer)
+        // Chọn ngẫu nhiên một phim bất kỳ từ danh sách (Ưu tiên phim featured từ Backend)
         const randomAnyMovie = candidateMovies.length > 0
            ? candidateMovies[Math.floor(Math.random() * candidateMovies.length)]
            : null;
 
         setFeaturedMovie(
-          randomTrailerMovie || randomAnyMovie || null
+          featured || randomAnyMovie || null
         );
         setFavouriteIds(favIds);
         setRows(kidsFilteredRows);

@@ -48,6 +48,7 @@ const mapMovie = (movie) => ({
   trailerUrl: normalizeMediaUrl(movie?.trailerUrl),
   genreIds: movie?.genreIds || [],
   genreNames: movie?.genreNames || [],
+  castNames: movie?.castNames || [],
 });
 
 const mapGenre = (genre) => ({

@@ -140,14 +140,16 @@ namespace Netflix.Api.Services
         {
             // Note: Since trending can return tv shows, we might need to handle /tv/{id} as well, 
             // but for simplicity we assume /movie. Ideally we check media_type.
-            var movie = await GetAsync<TmdbMovieDto>($"/movie/{tmdbId}");
-            if (movie != null)
+            var movie = await GetAsync<TmdbMovieDto>($"/movie/{tmdbId}?append_to_response=credits,release_dates");
+            // If it's a TV show, TMDB might return success but without Title (it has Name instead) or it returns 404.
+            // A safer check for movie is if it has a Title (since TV shows use Name).
+            if (movie != null && !string.IsNullOrEmpty(movie.Title))
             {
                 return movie;
             }
             
             // Fallback to TV show if movie is not found
-            var tvShow = await GetAsync<TmdbMovieDto>($"/tv/{tmdbId}");
+            var tvShow = await GetAsync<TmdbMovieDto>($"/tv/{tmdbId}?append_to_response=credits,content_ratings");
             return tvShow;
         }
 

@@ -82,6 +82,12 @@ const Watch = () => {
   const [showEpisodesMenu, setShowEpisodesMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [clickEffect, setClickEffect] = useState(null);
+  const [minLoadingTimePassed, setMinLoadingTimePassed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoadingTimePassed(true), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const selectedSeason = seasons[seasonIndex] || null;
   const selectedEpisode = selectedSeason?.episodes?.[episodeIndex] || null;
@@ -559,10 +565,12 @@ const Watch = () => {
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  if (isLoading) {
+  const showLoader = isLoading || !minLoadingTimePassed;
+
+  if (showLoader) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-white">
-        <p className="animate-pulse text-lg">Dang tai player...</p>
+      <main className="flex min-h-screen items-center justify-center bg-black text-white motion-fade-in">
+        <div className="netflix-spinner"></div>
       </main>
     );
   }

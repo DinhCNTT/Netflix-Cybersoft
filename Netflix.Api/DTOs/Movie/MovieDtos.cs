@@ -24,7 +24,8 @@ namespace Netflix.Api.DTOs.Movie
         bool IsNetflixOriginal,
         string? TrailerUrl,
         IReadOnlyList<int> GenreIds,
-        IReadOnlyList<string> GenreNames
+        IReadOnlyList<string> GenreNames,
+        IReadOnlyList<string> CastNames
     );
 
     public record GenreDto(int Id, string Name);

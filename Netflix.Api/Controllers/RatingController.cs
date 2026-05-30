@@ -85,7 +85,7 @@ namespace Netflix.Api.Controllers
                         Description = tmdbMovie.Overview,
                         PosterUrl = tmdbMovie.Poster_Path != null ? $"https://image.tmdb.org/t/p/w500{tmdbMovie.Poster_Path}" : null,
                         BackdropUrl = tmdbMovie.Backdrop_Path != null ? $"https://image.tmdb.org/t/p/original{tmdbMovie.Backdrop_Path}" : null,
-                        MaturityLevel = tmdbMovie.Adult ? "R" : "PG",
+                        MaturityLevel = tmdbMovie.ComputedMaturityLevel,
                         ReleaseYear = int.TryParse((tmdbMovie.Release_Date ?? tmdbMovie.First_Air_Date ?? "0000").Substring(0, 4), out var yr) ? yr : DateTime.UtcNow.Year,
                         IsActive = true
                     });

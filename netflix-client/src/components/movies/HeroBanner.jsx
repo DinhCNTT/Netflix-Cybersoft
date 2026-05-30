@@ -3,6 +3,7 @@ import { Play, Info, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Hls from "hls.js";
 import useAuthStore from "../../store/authStore";
+import { getMappedMaturity } from "../../utils/movieUtils";
 
 const PREVIEW_START_SECOND = 2;
 const PREVIEW_LENGTH_SECONDS = 18;
@@ -23,19 +24,7 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
   const useVideoBackground = Boolean(playbackSrc) && !videoFailed;
 
   const maturityBadge = useMemo(() => {
-    if (!movie?.maturityLevel) {
-      return "13+";
-    }
-
-    const upper = movie.maturityLevel.toUpperCase();
-    if (upper.includes("R") || upper.includes("18")) {
-      return "18+";
-    }
-    if (upper === "PG-13" || upper === "TV-14" || upper.includes("13") || upper.includes("14")) {
-      return "13+";
-    }
-
-    return "7+";
+    return getMappedMaturity(movie?.maturityLevel);
   }, [movie?.maturityLevel]);
 
   useEffect(() => {
@@ -264,16 +253,16 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
         />
       )}
 
-      <div className="absolute inset-0 bg-black/18" />
-      <div className="absolute bottom-0 left-0 right-[26.09%] top-0 bg-gradient-to-r from-black/60 to-transparent" />
+      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute bottom-0 left-0 right-[15%] top-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-[14.7vw] bg-gradient-to-t from-[#141414] via-[#141414cc] to-transparent" />
 
       <div className="relative z-10 h-full">
-        <div className="motion-fade-in absolute bottom-[35%] left-4 right-4 flex max-w-[92%] flex-col justify-end md:left-[4%] md:top-0 md:w-[36%] md:max-w-none md:right-auto 2xl:left-[60px]">
-          <h1 className="text-4xl font-black leading-[1.02] tracking-[-0.02em] md:text-[4.1vw] drop-shadow-[2px_2px_4px_rgba(0,0,0,0.45)]">
+        <div className="motion-fade-in absolute bottom-[35%] left-4 right-4 flex max-w-[92%] flex-col justify-end md:left-[4%] md:top-0 md:w-[40%] md:max-w-none md:right-auto 2xl:left-[60px]">
+          <h1 className="text-4xl font-black leading-[1.1] tracking-[-0.02em] md:text-[4.5vw] drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)]">
             {movie.title}
           </h1>
-          <p className="mt-[0.9vw] text-[13px] font-normal leading-[1.45] text-white md:text-[1.2vw] md:leading-normal drop-shadow-[2px_2px_4px_rgba(0,0,0,0.45)]">
+          <p className="mt-[1vw] text-[14px] font-medium leading-[1.5] text-white md:text-[1.2vw] drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] line-clamp-4">
             {movie.overview ||
               "Khám phá những bộ phim đặc sắc chỉ có trên Netflix Clone."}
           </p>
@@ -282,18 +271,18 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
             <button
               type="button"
               onClick={() => navigate(`/watch/${movie.id}`)}
-              className="inline-flex items-center justify-center gap-2 rounded bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#e6e6e6] md:px-[1.9vw] md:py-[0.72vw] md:text-[1.25vw]"
+              className="inline-flex items-center justify-center gap-3 rounded-md bg-white px-5 py-2 text-[15px] font-bold text-black transition hover:bg-white/80 md:px-[2.4vw] md:py-[0.8vw] md:text-[1.3vw]"
             >
-              <Play className="h-5 w-5 fill-black text-black md:h-[1.45vw] md:w-[1.45vw]" />
-              Phat
+              <Play className="h-6 w-6 fill-black text-black md:h-[1.8vw] md:w-[1.8vw]" />
+              Phát
             </button>
             <button
               type="button"
               onClick={() => onMoreInfo?.(movie)}
-              className="inline-flex items-center justify-center gap-2 rounded bg-[#6d6d6eb3] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6d6d6e99] md:px-[1.9vw] md:py-[0.72vw] md:text-[1.25vw]"
+              className="inline-flex items-center justify-center gap-3 rounded-md bg-[rgba(109,109,110,0.7)] px-5 py-2 text-[15px] font-bold text-white transition hover:bg-[rgba(109,109,110,0.4)] md:px-[2.4vw] md:py-[0.8vw] md:text-[1.3vw]"
             >
-              <Info className="h-5 w-5 md:h-[1.45vw] md:w-[1.45vw]" />
-              Thong tin khac
+              <Info className="h-6 w-6 md:h-[1.8vw] md:w-[1.8vw]" />
+              Thông tin khác
             </button>
           </div>
         </div>
@@ -304,17 +293,17 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
           <button
             type="button"
             onClick={() => setIsMuted((prev) => !prev)}
-            className="rounded-full border border-white/40 bg-black/30 p-2 text-white transition hover:bg-black/55 md:p-[0.55vw]"
+            className="rounded-full border border-white/50 bg-black/20 p-2 text-white transition hover:bg-white/10 md:p-[0.6vw]"
             aria-label={isMuted ? "Unmute trailer" : "Mute trailer"}
           >
             {isMuted ? (
-              <VolumeX className="h-5 w-5 md:h-[1.2vw] md:w-[1.2vw]" />
+              <VolumeX className="h-5 w-5 md:h-[1.4vw] md:w-[1.4vw]" />
             ) : (
-              <Volume2 className="h-5 w-5 md:h-[1.2vw] md:w-[1.2vw]" />
+              <Volume2 className="h-5 w-5 md:h-[1.4vw] md:w-[1.4vw]" />
             )}
           </button>
         )}
-        <span className="flex h-10 items-center border-l-[3px] border-l-[#dcdcdc] bg-[#33333399] px-4 text-sm text-white md:h-[2.4vw] md:px-[0.8vw] md:text-[1.1vw]">
+        <span className="flex h-10 items-center border-l-[3px] border-l-white bg-[rgba(51,51,51,0.6)] px-4 text-[15px] font-medium text-white md:h-[2.4vw] md:px-[1.2vw] md:text-[1.2vw]">
           {maturityBadge}
         </span>
       </div>

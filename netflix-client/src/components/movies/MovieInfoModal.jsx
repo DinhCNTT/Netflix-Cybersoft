@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { movieApi } from "../../api/movieApi";
+import { getMappedMaturity } from "../../utils/movieUtils";
 
 const MovieInfoModal = ({
   movie,
@@ -32,11 +33,13 @@ const MovieInfoModal = ({
     likeCount: 0,
     dislikeCount: 0,
   });
+  const [fullMovie, setFullMovie] = useState(movie);
   const [seasons, setSeasons] = useState([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState(null);
   const [similarMovies, setSimilarMovies] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [showReactionTray, setShowReactionTray] = useState(false);
-  const [reactionLabel, setReactionLabel] = useState("Th\u00edch");
+  const [reactionLabel, setReactionLabel] = useState("Thích");
   const [selectedReactionKey, setSelectedReactionKey] = useState(null);
   const closeTimerRef = useRef(null);
   const feedbackTimerRef = useRef(null);
@@ -61,18 +64,23 @@ const MovieInfoModal = ({
     }
   };
 
-  const hasEpisodes = seasons.length > 0;
+  const isStandaloneMovie = seasons.length === 1 && seasons[0]?.episodes?.length === 1;
+  const hasEpisodes = seasons.length > 0 && !isStandaloneMovie;
+  const standaloneDuration = isStandaloneMovie ? seasons[0].episodes[0].durationMinutes : null;
   const heroImage =
-    movie?.backdropUrl || movie?.posterUrl || "/images/hero.jpg";
-  const displayGenres = (movie?.genreNames || []).slice(0, 3);
+    fullMovie?.backdropUrl || fullMovie?.posterUrl || "/images/hero.jpg";
+  const displayGenres = (fullMovie?.genreNames || []).slice(0, 3);
+
+  const displayMaturityLevel = useMemo(() => {
+    return getMappedMaturity(fullMovie?.maturityLevel);
+  }, [fullMovie?.maturityLevel]);
 
   const castText = useMemo(() => {
-    if (displayGenres.length > 0) {
-      return `${displayGenres.join(", ")} ensemble`;
+    if (fullMovie?.castNames?.length > 0) {
+      return fullMovie.castNames.join(", ");
     }
-
-    return "Cast đang được cập nhật";
-  }, [displayGenres]);
+    return "Đang cập nhật";
+  }, [fullMovie?.castNames]);
 
   useEffect(() => {
     if (isOpen) {
@@ -100,17 +108,32 @@ const MovieInfoModal = ({
     }
 
     let disposed = false;
+    setFullMovie(movie);
 
     const loadModalData = async () => {
       try {
-        const [rating, similar] = await Promise.all([
+        const [ratingResult, similarResult, detailResult] = await Promise.allSettled([
           movieApi.getMovieRating(movie.id),
           movieApi.getSimilarMovies(movie.id),
+          movieApi.getMovieById(movie.id)
         ]);
 
         if (!disposed) {
-          setRatingData(rating);
-          setSimilarMovies(similar.filter((item) => item.id !== movie.id));
+          if (ratingResult.status === "fulfilled") {
+            setRatingData(ratingResult.value);
+          } else {
+            setRatingData((current) => ({ ...current, userRating: null }));
+          }
+
+          if (similarResult.status === "fulfilled") {
+            setSimilarMovies(similarResult.value.filter((item) => item.id !== movie.id));
+          } else {
+            setSimilarMovies([]);
+          }
+
+          if (detailResult.status === "fulfilled" && detailResult.value) {
+            setFullMovie((prev) => ({ ...prev, ...detailResult.value }));
+          }
         }
       } catch {
         if (!disposed) {
@@ -124,18 +147,21 @@ const MovieInfoModal = ({
         if (!disposed) {
           setSeasons(seasonData);
           if (seasonData.length > 0) {
+            setSelectedSeasonId(seasonData[0].id);
             setActiveTab("episodes");
           }
         }
       } catch {
         if (!disposed) {
           setSeasons([]);
+          setSelectedSeasonId(null);
           setActiveTab("details");
         }
       }
     };
 
     setSeasons([]);
+    setSelectedSeasonId(null);
     setSimilarMovies([]);
     setActiveTab("details");
     loadModalData();
@@ -200,6 +226,8 @@ const MovieInfoModal = ({
     }
   };
 
+  const selectedSeason = seasons.find(s => s.id === selectedSeasonId) || seasons[0];
+
   return (
     <div
       className="fixed inset-0 z-[70] motion-fade-in flex items-center justify-center bg-black/80 p-4"
@@ -207,20 +235,20 @@ const MovieInfoModal = ({
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className={`relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-[#181818] text-white shadow-2xl transition-[transform,opacity] duration-[340ms] ease-[cubic-bezier(0.22,0.68,0,1.01)] ${
+        className={`relative max-h-[90vh] w-full max-w-[950px] overflow-y-auto rounded-lg bg-[#181818] text-white shadow-2xl transition-[transform,opacity] duration-[340ms] ease-[cubic-bezier(0.22,0.68,0,1.01)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${
           isVisible ? "scale-100 opacity-100" : "scale-[0.94] opacity-0"
         }`}
       >
         <button
           type="button"
           onClick={handleClose}
-          className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-2 hover:bg-black/80"
+          className="absolute right-4 top-4 z-[100] flex h-10 w-10 items-center justify-center rounded-full bg-[#181818] text-white transition hover:bg-[#181818]/80"
           aria-label="Close"
         >
-          <X className="h-5 w-5" />
+          <X className="h-6 w-6" />
         </button>
 
-        <div className="relative h-80 w-full overflow-hidden bg-black">
+        <div className="relative h-[30rem] w-full overflow-hidden bg-black">
           {movie.trailerUrl ? (
             <video
               src={movie.trailerUrl}
@@ -240,43 +268,50 @@ const MovieInfoModal = ({
             />
           )}
 
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181818] via-[#18181866] to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181818] via-[#181818]/40 to-transparent" />
 
-          <div className="absolute bottom-6 left-8 right-8 flex items-end justify-between">
-            <div>
-              <h3 className="text-3xl font-extrabold drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+          <div className="absolute bottom-[5%] left-10 right-10 flex items-end justify-between">
+            <div className="w-[60%]">
+              <h3 className="text-5xl font-black drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] md:text-[4vw]">
                 {movie.title}
               </h3>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-6 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     onPlay?.(movie);
                     navigate(`/watch/${movie.id}`);
                   }}
-                  className="inline-flex items-center gap-2 rounded bg-white px-6 py-2 font-semibold text-black transition hover:bg-gray-200"
+                  className="inline-flex items-center gap-3 rounded-md bg-white px-8 py-2.5 text-[17px] font-bold text-black transition hover:bg-white/80"
                 >
-                  <Play className="h-4 w-4 fill-black text-black" />
-                  Play
+                  <Play className="h-6 w-6 fill-black text-black" />
+                  Phát
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleToggleMyList}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-zinc-300 transition hover:border-white"
-                  aria-label={
-                    isInMyList ? "Remove from My List" : "Add to My List"
-                  }
-                >
-                  {isInMyList ? (
-                    <Check className="h-5 w-5 text-white" />
-                  ) : (
-                    <Plus className="h-5 w-5 text-white" />
-                  )}
-                </button>
+                <div className="group relative">
+                  <div className="pointer-events-none absolute bottom-[calc(100%+14px)] left-1/2 z-30 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <div className="relative whitespace-nowrap rounded-md bg-[#e6e6e6] px-3 py-[6px] text-[15px] font-bold text-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.4)] after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-[#e6e6e6]">
+                      {isInMyList ? "Xóa khỏi Danh sách của tôi" : "Thêm vào Danh sách của tôi"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleMyList}
+                    className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
+                    aria-label={
+                      isInMyList ? "Remove from My List" : "Add to My List"
+                    }
+                  >
+                    {isInMyList ? (
+                      <Check className="h-5 w-5 text-white" />
+                    ) : (
+                      <Plus className="h-5 w-5 text-white" />
+                    )}
+                  </button>
+                </div>
 
                 <div
-                  className="relative h-10 w-10"
+                  className="relative h-[42px] w-[42px]"
                   onMouseEnter={() => {
                     if (hideTrayTimerRef.current)
                       clearTimeout(hideTrayTimerRef.current);
@@ -290,37 +325,33 @@ const MovieInfoModal = ({
                   }}
                 >
                   {showReactionTray && (
-                    <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-20 -translate-x-1/2">
-                      <span className="mb-2 inline-flex whitespace-nowrap rounded-md bg-[#e6e6e6] px-3 py-1 text-sm font-semibold text-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.35)]">
+                    <div className="absolute bottom-[calc(100%+14px)] left-1/2 z-30 -translate-x-1/2 motion-fade-in">
+                      <div className="relative rounded-md bg-[#e6e6e6] px-3 py-[6px] text-[15px] font-bold text-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.4)] after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-[#e6e6e6] whitespace-nowrap">
                         {reactionLabel}
-                      </span>
+                      </div>
                     </div>
                   )}
 
                   <div
-                    className={`absolute left-1/2 top-0 h-10 -translate-x-1/2 overflow-visible rounded-full bg-[#1f1f1f] transition-all duration-200 ${
-                      showReactionTray ? "w-[132px]" : "w-10"
+                    className={`absolute left-1/2 top-0 h-[42px] -translate-x-1/2 overflow-visible rounded-full transition-all duration-200 ${
+                      showReactionTray ? "w-[140px] bg-[#232323] shadow-lg" : "w-[42px] bg-transparent"
                     }`}
                   >
                     <button
                       type="button"
                       onMouseEnter={() =>
-                        setReactionLabel("Kh\u00f4ng th\u00edch")
+                        setReactionLabel("Không thích")
                       }
                       onClick={() => handleRateWithKey(-1, "dislike")}
-                      className={`absolute left-1/2 top-0 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white ${
+                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
                         showReactionTray
-                          ? "-translate-x-[54px] opacity-100"
-                          : "opacity-0"
-                      } ${
-                        effectiveReactionKey === "dislike"
-                          ? "border-white"
-                          : "border-[#6a6a6a]"
+                          ? "-translate-x-[64px] opacity-100 hover:bg-white/10"
+                          : "-translate-x-1/2 opacity-0 pointer-events-none"
                       }`}
                       aria-label="Dislike"
                     >
                       <ThumbsDown
-                        className={`h-5 w-5 transition-all ${
+                        className={`h-[22px] w-[22px] transition-all ${
                           effectiveReactionKey === "dislike" ? "fill-white" : ""
                         }`}
                       />
@@ -328,17 +359,17 @@ const MovieInfoModal = ({
 
                     <button
                       type="button"
-                      onMouseEnter={() => setReactionLabel("Th\u00edch")}
+                      onMouseEnter={() => setReactionLabel("Thích")}
                       onClick={() => handleRateWithKey(1, "like")}
-                      className={`absolute left-1/2 top-0 z-20 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:scale-105 hover:border-white ${
-                        effectiveReactionKey === "like"
-                          ? "border-white"
-                          : "border-[#6a6a6a]"
+                      className={`absolute left-1/2 top-1/2 z-20 flex h-[42px] w-[42px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
+                        showReactionTray
+                          ? "h-[38px] w-[38px] border-transparent bg-transparent hover:bg-white/10"
+                          : "border-[1.5px] border-white/60 bg-[#2a2a2a]/60 hover:border-white hover:bg-white/20"
                       }`}
                       aria-label="Like"
                     >
                       <ThumbsUp
-                        className={`h-5 w-5 transition-all ${
+                        className={`h-[22px] w-[22px] transition-all ${
                           effectiveReactionKey === "like" ? "fill-white" : ""
                         }`}
                       />
@@ -347,22 +378,18 @@ const MovieInfoModal = ({
                     <button
                       type="button"
                       onMouseEnter={() =>
-                        setReactionLabel("R\u1ea5t th\u00edch")
+                        setReactionLabel("Rất thích")
                       }
                       onClick={() => handleRateWithKey(1, "superlike")}
-                      className={`absolute left-1/2 top-0 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white ${
+                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
                         showReactionTray
-                          ? "translate-x-[14px] opacity-100"
-                          : "opacity-0"
-                      } ${
-                        effectiveReactionKey === "superlike"
-                          ? "border-white"
-                          : "border-[#6a6a6a]"
+                          ? "translate-x-[26px] opacity-100 hover:bg-white/10"
+                          : "-translate-x-1/2 opacity-0 pointer-events-none"
                       }`}
                       aria-label="Super like"
                     >
                       <Star
-                        className={`h-5 w-5 transition-all ${
+                        className={`h-[22px] w-[22px] transition-all ${
                           effectiveReactionKey === "superlike"
                             ? "fill-white"
                             : ""
@@ -372,11 +399,15 @@ const MovieInfoModal = ({
                   </div>
                 </div>
 
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
                 {movie.trailerUrl && (
                   <button
                     type="button"
                     onClick={() => setIsMuted((prev) => !prev)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-zinc-300 text-white transition hover:border-white"
+                    className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
                     aria-label={isMuted ? "Unmute trailer" : "Mute trailer"}
                   >
                     {isMuted ? (
@@ -386,171 +417,204 @@ const MovieInfoModal = ({
                     )}
                   </button>
                 )}
-              </div>
             </div>
-
-            <span className="rounded border border-zinc-300 bg-black/35 px-2 py-1 text-sm text-white">
-              {movie.maturityLevel || "13+"}
-            </span>
           </div>
         </div>
 
-        <div className="space-y-5 p-8">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
-            <span className="font-semibold text-[#46d369]">
-              {ratingData.matchPercent}% Match
-            </span>
-            <span>{movie.releaseYear || "Mới cập nhật"}</span>
-            <span className="border border-gray-500 px-1 text-[10px]">
-              {movie.maturityLevel || "13+"}
-            </span>
-            <span className="inline-flex items-center gap-1 text-zinc-400">
-              <ThumbsUp className="h-3.5 w-3.5" /> {ratingData.likeCount}
-            </span>
-            <span className="inline-flex items-center gap-1 text-zinc-400">
-              <ThumbsDown className="h-3.5 w-3.5" /> {ratingData.dislikeCount}
-            </span>
+        <div className="px-12 py-8 pb-12">
+          <div className="grid gap-14 md:grid-cols-[2fr_1fr]">
+            {/* Left Column */}
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-3 text-[17px] font-medium text-white">
+                <span className="font-semibold text-[#46d369]">
+                  {ratingData.matchPercent}% Match
+                </span>
+                <span>{fullMovie?.releaseYear || "2024"}</span>
+                {hasEpisodes && <span>{seasons.length} mùa</span>}
+                {isStandaloneMovie && standaloneDuration && <span>{Math.floor(standaloneDuration / 60)}g {standaloneDuration % 60}p</span>}
+                <span className="flex h-5 items-center rounded-[3px] border border-white/40 px-1.5 text-xs font-bold text-white/90">
+                  HD
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="flex h-[24px] items-center border border-white/40 px-2 text-[15px] font-medium text-white/90">
+                  {displayMaturityLevel}
+                </span>
+              </div>
+
+              <p className="mt-5 text-[17px] leading-relaxed text-white">
+                {fullMovie?.overview || "Nội dung đang được cập nhật."}
+              </p>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4 text-[15px] leading-snug">
+              <div>
+                <span className="text-[#777]">Diễn viên: </span>
+                <span className="cursor-pointer text-white hover:underline">{castText}</span>
+              </div>
+              <div>
+                <span className="text-[#777]">Thể loại: </span>
+                <span className="cursor-pointer text-white hover:underline">
+                  {displayGenres.length ? displayGenres.join(", ") : "Chưa cập nhật"}
+                </span>
+              </div>
+            </div>
           </div>
 
           {feedback && (
-            <div className="inline-flex rounded bg-[#2f2f2f] px-3 py-1 text-xs font-medium text-white motion-fade-in">
+            <div className="mt-4 inline-flex rounded bg-[#2f2f2f] px-3 py-1 text-xs font-medium text-white motion-fade-in">
               {feedback}
             </div>
           )}
 
-          <div className="flex gap-2 border-b border-zinc-700 pb-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("details")}
-              className={`rounded px-3 py-1 text-sm font-medium transition ${
-                activeTab === "details"
-                  ? "bg-zinc-100 text-black"
-                  : "text-zinc-300 hover:text-white"
-              }`}
-            >
-              Chi tiết
-            </button>
-
-            {hasEpisodes && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("episodes")}
-                className={`rounded px-3 py-1 text-sm font-medium transition ${
-                  activeTab === "episodes"
-                    ? "bg-zinc-100 text-black"
-                    : "text-zinc-300 hover:text-white"
-                }`}
-              >
-                Episodes
-              </button>
-            )}
-          </div>
-
-          {activeTab === "details" ? (
-            <div className="grid gap-5 md:grid-cols-[1.35fr_1fr]">
-              <p className="leading-relaxed text-gray-200">
-                {movie.overview || "Nội dung đang được cập nhật."}
-              </p>
-
-              <div className="space-y-2 text-sm text-zinc-300">
-                <p>
-                  <span className="text-zinc-500">Cast:</span> {castText}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Thể loại:</span>{" "}
-                  {displayGenres.length
-                    ? displayGenres.join(", ")
-                    : "Đang cập nhật"}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Năm:</span>{" "}
-                  {movie.releaseYear || "N/A"}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Độ tuổi:</span>{" "}
-                  {movie.maturityLevel || "13+"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {seasons.map((season) => (
-                <div
-                  key={season.id}
-                  className="rounded-md border border-zinc-700 bg-[#1f1f1f] p-4"
-                >
-                  <h4 className="mb-3 text-sm font-semibold text-white">
-                    Season {season.seasonNumber}: {season.title}
-                  </h4>
-                  <div className="space-y-2">
-                    {season.episodes.map((episode) => (
-                      <div
-                        key={episode.id}
-                        className="flex items-center justify-between rounded bg-[#2a2a2a] px-3 py-2 text-sm"
-                      >
-                        <span>
-                          {episode.episodeNumber}. {episode.title}
-                        </span>
-                        <span className="text-zinc-400">
-                          {episode.durationMinutes}m
-                        </span>
-                      </div>
-                    ))}
+          {hasEpisodes && (
+             <div className="mt-12">
+               <div className="mb-6 flex items-center justify-between">
+                  <h4 className="text-[24px] font-bold text-white">Tập</h4>
+                  <div className="relative">
+                    <select 
+                      className="appearance-none bg-[#242424] text-white text-[17px] font-medium border border-white/20 rounded px-4 py-2 pr-10 focus:outline-none focus:ring-1 focus:ring-white transition hover:bg-[#2a2a2a] cursor-pointer"
+                      value={selectedSeasonId || ""}
+                      onChange={(e) => setSelectedSeasonId(Number(e.target.value))}
+                    >
+                      {seasons.map(s => (
+                         <option key={s.id} value={s.id}>Mùa {s.seasonNumber}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                   </div>
-                </div>
-              ))}
-            </div>
+               </div>
+
+               {selectedSeason && (
+                  <div className="mb-4 text-[15px] font-medium text-white/90">
+                    Mùa {selectedSeason.seasonNumber}: 
+                    <span className="border border-white/40 px-1.5 text-sm ml-2">{displayMaturityLevel}</span> 
+                  </div>
+               )}
+
+               <div className="flex flex-col border-t border-[#404040]">
+                 {(selectedSeason?.episodes || []).map((episode) => (
+                   <div 
+                     key={episode.id} 
+                     className="group flex items-center gap-4 border-b border-[#404040] p-6 cursor-pointer hover:bg-[#333] transition-colors rounded-b-sm"
+                     onClick={() => {
+                        onPlay?.(movie);
+                        navigate(`/watch/${movie.id}?episode=${episode.id}`);
+                     }}
+                   >
+                     <div className="text-2xl text-[#d2d2d2] w-8 text-center font-medium">
+                        {episode.episodeNumber}
+                     </div>
+                     <div className="relative w-[130px] h-[73px] shrink-0 overflow-hidden rounded bg-[#1f1f1f]">
+                        <img 
+                           src={heroImage} 
+                           alt={episode.title}
+                           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                            <Play className="w-8 h-8 fill-white text-white drop-shadow-md" />
+                        </div>
+                     </div>
+                     <div className="flex-1 flex flex-col justify-center">
+                        <div className="flex justify-between items-start">
+                           <span className="font-bold text-white text-[16px]">{episode.title}</span>
+                           <span className="text-[#d2d2d2] text-[15px]">{episode.durationMinutes}ph</span>
+                        </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
           )}
 
-          <section>
-            <h4 className="mb-3 text-lg font-semibold text-white">
-              More Like This
+          <section className="mt-12">
+            <h4 className="mb-6 text-[24px] font-bold text-white">
+              Nội dung tương tự
             </h4>
             {similarMovies.length ? (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                {similarMovies.slice(0, 6).map((similar) => (
-                  <button
-                    key={similar.id}
-                    type="button"
-                    onClick={() => onPlay?.(similar)}
-                    className="group overflow-hidden rounded-md border border-zinc-700 bg-[#202020] text-left transition hover:border-zinc-500"
-                  >
-                    <img
-                      src={
-                        similar.backdropUrl ||
-                        similar.posterUrl ||
-                        "/images/hero.jpg"
-                      }
-                      alt={similar.title}
-                      className="aspect-video w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                    />
-                    <div className="space-y-1 p-3">
-                      <p className="line-clamp-1 text-sm font-semibold text-white">
-                        {similar.title}
-                      </p>
-                      <p className="text-xs text-zinc-300">
-                        {similar.releaseYear || "N/A"} •{" "}
-                        {similar.maturityLevel || "13+"}
-                      </p>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {similarMovies.slice(0, 6).map((similar) => {
+                  const simIsMovie = similar.seasons?.length === 1 && similar.seasons[0]?.episodes?.length === 1;
+                  const simDuration = simIsMovie ? similar.seasons[0].episodes[0].durationMinutes : null;
+                  const durationBadge = simIsMovie && simDuration 
+                    ? `${Math.floor(simDuration / 60)}g ${simDuration % 60}ph`
+                    : (similar.seasons?.length > 1 ? `${similar.seasons.length} mùa` : (similar.seasons?.[0]?.episodes?.length > 1 ? `${similar.seasons[0].episodes.length} tập` : ""));
+
+                  return (
+                    <div
+                      key={similar.id}
+                      className="group flex flex-col overflow-hidden rounded-md bg-[#2f2f2f]"
+                    >
+                      <div 
+                        className="relative aspect-video w-full cursor-pointer overflow-hidden"
+                        onClick={() => {
+                          onPlay?.(similar);
+                          navigate(`/watch/${similar.id}`);
+                        }}
+                      >
+                        <img
+                          src={
+                            similar.backdropUrl ||
+                            similar.posterUrl ||
+                            "/images/hero.jpg"
+                          }
+                          alt={similar.title}
+                          className="h-full w-full object-cover"
+                        />
+                        {durationBadge && (
+                          <div className="absolute right-2 top-2 font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            {durationBadge}
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity group-hover:opacity-100">
+                           <Play className="h-12 w-12 fill-white text-white drop-shadow-lg" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-1 flex-col p-4">
+                        <div className="mb-4 flex items-start justify-between">
+                          <div className="flex flex-wrap items-center gap-2 text-[15px] font-medium text-white/90">
+                            <span className="flex h-[22px] items-center border border-white/40 px-1.5 text-sm">
+                              {getMappedMaturity(similar.maturityLevel)}
+                            </span>
+                            <span className="flex h-[18px] items-center rounded-[3px] border border-white/40 px-1 text-[10px] font-bold">
+                              HD
+                            </span>
+                            <span>{similar.releaseYear || "2024"}</span>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-white/60 bg-transparent text-white transition hover:border-white hover:bg-white/10"
+                            onClick={(e) => {
+                               e.stopPropagation();
+                            }}
+                            aria-label="Add to My List"
+                          >
+                            <Plus className="h-5 w-5" />
+                          </button>
+                        </div>
+                        <p className="line-clamp-4 text-[14px] leading-snug text-[#d2d2d2]">
+                          {similar.overview || similar.description || "Nội dung phim đang được cập nhật."}
+                        </p>
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="rounded border border-zinc-700 bg-[#202020] px-3 py-2 text-sm text-zinc-300">
+              <div className="rounded border border-white/20 bg-transparent px-4 py-3 text-[15px] font-medium text-white/90">
                 Chưa có phim tương tự.
               </div>
             )}
           </section>
 
-          <button
-            type="button"
-            onClick={() => onPlay?.(movie)}
-            className="inline-flex items-center gap-2 text-sm text-zinc-300 transition hover:text-white"
-          >
-            <Info className="h-4 w-4" />
-            Xem thêm thông tin trong Browse
-          </button>
+          <div className="mt-8 flex items-center gap-2 text-[15px] font-medium text-white/90">
+            <Info className="h-6 w-6" />
+            <span>Xem thêm thông tin trong Browse</span>
+          </div>
         </div>
       </div>
     </div>

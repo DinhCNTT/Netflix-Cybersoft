@@ -73,9 +73,9 @@ namespace Netflix.Api.Controllers
                 // Nếu có phim nội bộ, ưu tiên link Video từ nội bộ
                 var trailerUrl = hasLocal ? localMovie!.TrailerUrl : null;
                 
-                // Trả về nhãn độ tuổi thật để Frontend xử lý, tuy nhiên API TMDB đã lọc sẵn cho Profile Kids rồi.
-                // Đặt mặc định là PG (thay vì PG-13) để Frontend không bị filter mất đối với Kids Profile.
-                var maturityLevel = tmdb.Adult ? "R" : (hasLocal ? localMovie!.MaturityLevel : "PG");
+                var maturityLevel = hasLocal && !string.IsNullOrEmpty(localMovie!.MaturityLevel) && localMovie.MaturityLevel != "PG" 
+                                    ? localMovie.MaturityLevel 
+                                    : tmdb.ComputedMaturityLevel;
 
                 result.Add(new MovieListItemDto(
                     Id: tmdb.Id,
@@ -188,10 +188,13 @@ namespace Netflix.Api.Controllers
                 var movie = movies.FirstOrDefault();
                 if (movie == null) return NotFound();
 
+                var genreNames = tmdbMovie.Genres?.Select(g => g.Name).ToList() ?? new List<string>();
+                var castNames = tmdbMovie.Credits?.Cast?.OrderBy(c => c.Order).Select(c => c.Name).Take(10).ToList() ?? new List<string>();
+
                 var detail = new MovieDetailDto(
                     movie.Id, movie.Title, movie.Description, movie.PosterUrl, movie.BackdropUrl,
                     movie.MaturityLevel, movie.ReleaseYear, movie.IsNetflixOriginal, movie.TrailerUrl,
-                    movie.GenreIds, new List<string>() // Thêm Genres thực tế nếu cần
+                    movie.GenreIds, genreNames, castNames
                 );
 
                 return Ok(new { status = "success", data = detail });
@@ -208,8 +211,7 @@ namespace Netflix.Api.Controllers
             try
             {
                 var profile = await ResolveProfileAsync(GetUserId());
-                // Gọi Trending làm phim tương tự cho nhanh
-                var tmdbRes = await _tmdbService.GetTrendingMoviesAsync(profile?.IsKids ?? false);
+                var tmdbRes = await _tmdbService.GetMovieRecommendationsAsync(id, profile?.IsKids ?? false);
                 var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Where(m => m.Id != id).Take(18));
                 return Ok(new { status = "success", data = movies });
             }
