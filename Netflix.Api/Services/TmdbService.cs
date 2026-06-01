@@ -20,7 +20,7 @@ namespace Netflix.Api.Services
         private async Task<T?> GetAsync<T>(string endpoint)
         {
             var separator = endpoint.Contains("?") ? "&" : "?";
-            var url = $"{_baseUrl}{endpoint}{separator}api_key={_apiKey}&language=vi-VN";
+            var url = $"{_baseUrl}{endpoint}{separator}api_key={_apiKey}&language=vi-VN&include_adult=false";
             
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)

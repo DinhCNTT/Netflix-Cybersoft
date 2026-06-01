@@ -44,7 +44,18 @@ namespace Netflix.Api.Controllers
         // Helper: Merge TMDB data with local database streaming URLs
         private async Task<List<MovieListItemDto>> MergeWithLocalDbAsync(IEnumerable<TmdbMovieDto> tmdbMovies)
         {
-            var tmdbIds = tmdbMovies.Select(m => m.Id).ToList();
+            // Lọc các phim nhạy cảm, phim 18+ (phim sex) và phim có từ khóa nhạy cảm
+            var filteredTmdbMovies = tmdbMovies.Where(m => 
+                !m.Adult && 
+                !(m.Title ?? "").ToLower().Contains("porn") &&
+                !(m.Name ?? "").ToLower().Contains("porn") &&
+                !(m.Title ?? "").ToLower().Contains("sex") &&
+                !(m.Name ?? "").ToLower().Contains("sex") &&
+                !(m.Title ?? "").ToLower().Contains("erotic") &&
+                !(m.Name ?? "").ToLower().Contains("erotic")
+            ).ToList();
+
+            var tmdbIds = filteredTmdbMovies.Select(m => m.Id).ToList();
             
             // Lấy các phim có sẵn trong DB nội bộ để chèn Trailer/Video
             var localMovies = await _dbContext.Movies
@@ -53,7 +64,7 @@ namespace Netflix.Api.Controllers
                 .ToDictionaryAsync(m => m.Id);
 
             var result = new List<MovieListItemDto>();
-            foreach (var tmdb in tmdbMovies)
+            foreach (var tmdb in filteredTmdbMovies)
             {
                 var hasLocal = localMovies.TryGetValue(tmdb.Id, out var localMovie);
                 
