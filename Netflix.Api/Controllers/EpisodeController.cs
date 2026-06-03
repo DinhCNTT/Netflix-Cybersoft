@@ -54,7 +54,8 @@ namespace Netflix.Api.Controllers
 
                 var movie = await _dbContext.Movies.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 var seasons = new List<SeasonDto>();
-                var mockHlsUrl = "https://bitmovin-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8"; // Cinematic 1080p HLS with Audio
+                // HLS test stream đang hoạt động - Mux demo stream (Big Buck Bunny, 1080p)
+                var mockHlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
 
                 if (movie != null)
                 {
@@ -86,7 +87,7 @@ namespace Netflix.Api.Controllers
                 {
                     var tvDetails = await _tmdbService.GetTvShowDetailsAsync(id);
                     
-                    if (tvDetails != null && tvDetails.Seasons != null && tvDetails.Seasons.Any())
+                    if (tvDetails?.Seasons != null && tvDetails.Seasons.Any())
                     {
                         int fakeEpId = id * 1000;
                         foreach(var tmdbSeason in tvDetails.Seasons.Where(s => s.Season_Number > 0).Take(5))

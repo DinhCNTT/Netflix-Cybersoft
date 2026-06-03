@@ -58,7 +58,8 @@ namespace Netflix.Api.Controllers
                         m.ReleaseYear,
                         m.IsNetflixOriginal,
                         m.TrailerUrl,
-                        m.MovieGenres.Select(mg => mg.GenreId).ToList()
+                        m.MovieGenres.Select(mg => mg.GenreId).ToList(),
+                        "movie"
                     ))
                     .ToListAsync();
 

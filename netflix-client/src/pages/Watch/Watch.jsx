@@ -54,6 +54,10 @@ const Watch = () => {
   const controlsTimeoutRef = useRef(null);
   const autoNextIntervalRef = useRef(null);
   const pendingResumeRef = useRef(0);
+  // Refs cho callbacks để tránh video effect phụ thuộc vào chúng
+  const clearAutoNextRef = useRef(null);
+  const goToNextEpisodeRef = useRef(null);
+  const hasNextEpisodeRef = useRef(false);
 
   const [movie, setMovie] = useState(null);
   const [seasons, setSeasons] = useState([]);
@@ -136,6 +140,14 @@ const Watch = () => {
     setSeasonIndex(nextPosition.nextSeasonIndex);
     setEpisodeIndex(nextPosition.nextEpisodeIndex);
   }, [clearAutoNext, getNextEpisodePosition]);
+
+  // Sync refs sau mỗi render để video effect luôn có giá trị mới nhất
+  // mà không cần được trong deps array
+  useEffect(() => {
+    clearAutoNextRef.current = clearAutoNext;
+    goToNextEpisodeRef.current = goToNextEpisode;
+    hasNextEpisodeRef.current = hasNextEpisode;
+  });
 
   const persistProgress = useCallback(async () => {
     const video = videoRef.current;
@@ -236,14 +248,27 @@ const Watch = () => {
     }
 
     const video = videoRef.current;
-    clearAutoNext();
+    clearAutoNextRef.current?.();
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
 
-    const source = selectedEpisode.videoUrl;
+    // Flag để chặn play() sau khi effect đã cleanup
+    let cancelled = false;
+
+    const safePlay = () => {
+      if (cancelled) return;
+      const p = video.play();
+      if (p !== undefined) {
+        p.catch((err) => {
+          if (err.name !== "AbortError") {
+            console.warn("Video safePlay error:", err);
+          }
+        });
+      }
+    };
 
     const applyResume = () => {
       if (pendingResumeRef.current > 0 && Number.isFinite(video.duration)) {
@@ -266,7 +291,7 @@ const Watch = () => {
     const handleEnded = () => {
       setIsPlaying(false);
 
-      if (!hasNextEpisode) {
+      if (!hasNextEpisodeRef.current) {
         return;
       }
 
@@ -275,7 +300,7 @@ const Watch = () => {
         setAutoNextCountdown((prev) => {
           if (prev === null) return null;
           if (prev <= 1) {
-            goToNextEpisode();
+            goToNextEpisodeRef.current?.();
             return null;
           }
 
@@ -294,13 +319,19 @@ const Watch = () => {
     setSelectedQuality("auto");
     setQualityLevelMap({});
 
-    if (Hls.isSupported() && source.endsWith(".m3u8")) {
-      const hls = new Hls({ enableWorker: true });
+    // Fallback về demo HLS stream nếu episode không có videoUrl
+    const DEMO_HLS = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+    const source = selectedEpisode.videoUrl || DEMO_HLS;
+    const isHls = typeof source === "string" && source.includes(".m3u8");
+
+    if (Hls.isSupported() && isHls) {
+      const hls = new Hls({ enableWorker: true, maxBufferLength: 30 });
       hlsRef.current = hls;
       hls.loadSource(source);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        if (cancelled) return;
         const levels = (data.levels || []).map((level, index) => ({
           index,
           height: level.height || 0,
@@ -332,19 +363,35 @@ const Watch = () => {
           { label: "720p", value: "720" },
           { label: "1080p", value: "1080" },
         ]);
-        video.play().catch(() => {
-          // User gesture may be required by browser policy.
-        });
+        safePlay();
       });
-    } else {
+
+      // Nếu HLS lỗi (CORS, stream chết...) → fallback sang demo stream
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal && source !== DEMO_HLS && !cancelled) {
+          hls.destroy();
+          hlsRef.current = null;
+          const fallback = new Hls({ enableWorker: true });
+          hlsRef.current = fallback;
+          fallback.loadSource(DEMO_HLS);
+          fallback.attachMedia(video);
+          fallback.on(Hls.Events.MANIFEST_PARSED, () => safePlay());
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl") && isHls) {
+      // Safari native HLS support
       video.src = source;
       video.load();
-      video.play().catch(() => {
-        // User gesture may be required by browser policy.
-      });
+      safePlay();
+    } else {
+      // MP4 hoặc URL thông thường
+      video.src = source || DEMO_HLS;
+      video.load();
+      safePlay();
     }
 
     return () => {
+      cancelled = true;
       video.pause();
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
@@ -352,7 +399,8 @@ const Watch = () => {
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
     };
-  }, [clearAutoNext, goToNextEpisode, hasNextEpisode, selectedEpisode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEpisode?.id, isLoading, minLoadingTimePassed]);
 
   useEffect(() => {
     if (!selectedEpisode || !activeProfile?.id) {
@@ -438,10 +486,16 @@ const Watch = () => {
       setIsMuted(false);
     }
 
-    if (video.paused) {
-      await video.play();
-    } else {
-      video.pause();
+    try {
+      if (video.paused) {
+        await video.play();
+      } else {
+        video.pause();
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.warn("togglePlay error:", error);
+      }
     }
   };
 
@@ -541,20 +595,6 @@ const Watch = () => {
   const skipIntroVisible =
     currentTime >= INTRO_START_SECONDS && currentTime <= INTRO_END_SECONDS;
 
-  const subtitleTrack = useMemo(() => {
-    if (subtitleLang === "off") {
-      return null;
-    }
-
-    const src = subtitleLang === "vi" ? "/subtitles/vi.vtt" : "/subtitles/en.vtt";
-
-    return {
-      src,
-      label: subtitleLang === "vi" ? "Tiếng Việt" : "English",
-      lang: subtitleLang,
-    };
-  }, [subtitleLang]);
-
   const subtitleOptions = useMemo(() => {
     return [
       { value: "off", label: "CC Off" },
@@ -562,6 +602,34 @@ const Watch = () => {
       { value: "en", label: "English" },
     ];
   }, []);
+
+  // Bật/tắt TextTrack truc tiếp qua JS API (không dung key re-render)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Đợi DOM sẵn sàng rồi mới set
+    const applyTrack = () => {
+      const tracks = video.textTracks;
+      if (!tracks || tracks.length === 0) return;
+
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if (subtitleLang === "off") {
+          track.mode = "hidden";
+        } else if (track.language === subtitleLang) {
+          track.mode = "showing";
+        } else {
+          track.mode = "hidden";
+        }
+      }
+    };
+
+    // Áp dụng ngay và sau 100ms (tracks có thể chưa load xong)
+    applyTrack();
+    const t = setTimeout(applyTrack, 100);
+    return () => clearTimeout(t);
+  }, [subtitleLang]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -600,21 +668,25 @@ const Watch = () => {
       className="relative min-h-screen overflow-hidden bg-black text-white"
     >
       <video
+        key={selectedEpisode?.id || 'video'}
         ref={videoRef}
         className="absolute inset-0 h-full w-full bg-black object-contain"
         playsInline
         muted
       >
-        {subtitleTrack && (
-          <track
-            key={subtitleTrack.src + subtitleTrack.lang}
-            src={subtitleTrack.src}
-            kind="subtitles"
-            srcLang={subtitleTrack.lang}
-            label={subtitleTrack.label}
-            default
-          />
-        )}
+        {/* Luon render ca 2 track, dung JS API de bat/tat mode */}
+        <track
+          src="/subtitles/vi.vtt"
+          kind="subtitles"
+          srcLang="vi"
+          label="Tiếng Việt"
+        />
+        <track
+          src="/subtitles/en.vtt"
+          kind="subtitles"
+          srcLang="en"
+          label="English"
+        />
       </video>
 
       <div
@@ -767,8 +839,10 @@ const Watch = () => {
                     <Layers className="h-7 w-7" />
                   </button>
                   {showEpisodesMenu && (
-                    <div className="absolute bottom-12 right-0 w-72 max-h-[60vh] overflow-y-auto rounded bg-zinc-900/95 shadow-lg border border-white/10 custom-scrollbar flex flex-col z-50">
-                      <h3 className="sticky top-0 bg-zinc-900/95 p-4 text-base font-semibold border-b border-gray-700 z-10">Danh sách tập</h3>
+                    <div className="absolute bottom-12 right-0 w-96 max-h-[70vh] overflow-y-auto rounded bg-zinc-900/95 shadow-lg border border-white/10 custom-scrollbar flex flex-col z-50">
+                      <h3 className="sticky top-0 bg-zinc-900/95 p-4 text-base font-semibold border-b border-gray-700 z-10">
+                        {movie?.title || "Danh sách tập"}
+                      </h3>
                       <div className="p-2">
                         {seasons.map((season, sIndex) =>
                           season.episodes.map((episode, eIndex) => {
@@ -785,7 +859,11 @@ const Watch = () => {
                                 }}
                                 className={`w-full flex flex-col text-left p-3 rounded mb-1 transition ${active ? 'bg-white/20 font-bold border-l-4 border-red-600' : 'hover:bg-white/10'}`}
                               >
-                                <span className="text-sm">Tập {episode.episodeNumber}: {episode.title}</span>
+                                <span className="text-sm">
+                                  {episode.title.toLowerCase().startsWith('tập') 
+                                    ? episode.title 
+                                    : `Tập ${episode.episodeNumber}: ${episode.title}`}
+                                </span>
                               </button>
                             );
                           })

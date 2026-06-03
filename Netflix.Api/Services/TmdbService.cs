@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Netflix.Api.DTOs.Tmdb;
 
@@ -7,12 +8,14 @@ namespace Netflix.Api.Services
     public class TmdbService : ITmdbService
     {
         private readonly HttpClient _httpClient;
+        private readonly IMemoryCache _cache;
         private readonly string _apiKey;
         private readonly string _baseUrl;
 
-        public TmdbService(HttpClient httpClient, IConfiguration configuration)
+        public TmdbService(HttpClient httpClient, IConfiguration configuration, IMemoryCache cache)
         {
             _httpClient = httpClient;
+            _cache = cache;
             _apiKey = configuration["Tmdb:ApiKey"] ?? throw new ArgumentNullException("Tmdb:ApiKey is missing");
             _baseUrl = configuration["Tmdb:BaseUrl"] ?? "https://api.themoviedb.org/3";
         }
@@ -22,16 +25,30 @@ namespace Netflix.Api.Services
             var separator = endpoint.Contains("?") ? "&" : "?";
             var url = $"{_baseUrl}{endpoint}{separator}api_key={_apiKey}&language=vi-VN&include_adult=false";
             
+            // Lấy từ cache nếu có
+            var cacheKey = $"TMDB_{url}";
+            if (_cache.TryGetValue(cacheKey, out object cachedObj))
+            {
+                if (cachedObj is T cachedTyped) return cachedTyped;
+            }
+
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
-                // In production, log error here
                 return default;
             }
 
             var content = await response.Content.ReadAsStringAsync();
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<T>(content, options);
+            var result = JsonSerializer.Deserialize<T>(content, options);
+
+            // Lưu vào cache
+            if (result != null)
+            {
+                _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+            }
+
+            return result;
         }
 
         public async Task<TmdbResponseDto<TmdbMovieDto>> GetTrendingMoviesAsync(bool isKids = false)
@@ -159,9 +176,12 @@ namespace Netflix.Api.Services
                    ?? new TmdbGenreResponseDto();
         }
 
-        public async Task<TmdbTvShowDetailsDto?> GetTvShowDetailsAsync(int tmdbId)
+        public async Task<TmdbMovieDto?> GetTvShowDetailsAsync(int tmdbId)
         {
-            return await GetAsync<TmdbTvShowDetailsDto>($"/tv/{tmdbId}");
+            // Gọi /tv/{id} với credits và content_ratings để lấy đầy đủ thông tin
+            var result = await GetAsync<TmdbMovieDto>($"/tv/{tmdbId}?append_to_response=credits,content_ratings");
+            if (result != null) result.Media_Type = "tv";
+            return result;
         }
     }
 }

@@ -19,11 +19,14 @@ namespace Netflix.Api.DTOs.Tmdb
         public string? Release_Date { get; set; }
         public string? First_Air_Date { get; set; } // for TV shows
         public bool Adult { get; set; }
+        public string? Media_Type { get; set; } // "movie" | "tv" | "person" — từ /trending/all/day
         public List<int> Genre_Ids { get; set; } = new List<int>();
         public List<TmdbGenreDto>? Genres { get; set; }
         public TmdbCreditsDto? Credits { get; set; }
         public TmdbReleaseDatesDto? Release_Dates { get; set; }
         public TmdbContentRatingsDto? Content_Ratings { get; set; }
+        // TV-only fields (từ /tv/{id})
+        public List<TmdbTvSeasonInlineDto>? Seasons { get; set; }
 
         public string ComputedMaturityLevel 
         {
@@ -69,6 +72,15 @@ namespace Netflix.Api.DTOs.Tmdb
     public class TmdbReleaseDatesDto
     {
         public List<TmdbReleaseDateResultDto> Results { get; set; } = new List<TmdbReleaseDateResultDto>();
+    }
+
+    // Dùng cho seasons array trong response /tv/{id}
+    public class TmdbTvSeasonInlineDto
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public int Season_Number { get; set; }
+        public int Episode_Count { get; set; }
     }
 
     public class TmdbReleaseDateResultDto

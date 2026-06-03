@@ -10,7 +10,8 @@ namespace Netflix.Api.DTOs.Movie
         int ReleaseYear,
         bool IsNetflixOriginal,
         string? TrailerUrl,
-        IReadOnlyList<int> GenreIds
+        IReadOnlyList<int> GenreIds,
+        string MediaType = "movie"  // "movie" | "tv"
     );
 
     public record MovieDetailDto(
@@ -25,7 +26,8 @@ namespace Netflix.Api.DTOs.Movie
         string? TrailerUrl,
         IReadOnlyList<int> GenreIds,
         IReadOnlyList<string> GenreNames,
-        IReadOnlyList<string> CastNames
+        IReadOnlyList<string> CastNames,
+        string MediaType = "movie"  // "movie" | "tv"
     );
 
     public record GenreDto(int Id, string Name);

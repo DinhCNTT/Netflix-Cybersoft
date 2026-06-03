@@ -115,7 +115,7 @@ const MovieInfoModal = ({
         const [ratingResult, similarResult, detailResult] = await Promise.allSettled([
           movieApi.getMovieRating(movie.id),
           movieApi.getSimilarMovies(movie.id),
-          movieApi.getMovieById(movie.id)
+          movieApi.getMovieById(movie.id, movie.mediaType || "movie")
         ]);
 
         if (!disposed) {

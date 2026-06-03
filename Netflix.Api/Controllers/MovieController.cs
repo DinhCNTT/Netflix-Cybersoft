@@ -88,6 +88,12 @@ namespace Netflix.Api.Controllers
                                     ? localMovie.MaturityLevel 
                                     : tmdb.ComputedMaturityLevel;
 
+                // Xác định media_type: ưu tiên field media_type từ TMDB,
+                // fallback: nếu có First_Air_Date thì là tv, ngược lại movie
+                var mediaType = !string.IsNullOrEmpty(tmdb.Media_Type) && tmdb.Media_Type != "person"
+                    ? tmdb.Media_Type
+                    : (!string.IsNullOrEmpty(tmdb.First_Air_Date) ? "tv" : "movie");
+
                 result.Add(new MovieListItemDto(
                     Id: tmdb.Id,
                     Title: tmdb.Title ?? tmdb.Name ?? "Unknown",
@@ -98,7 +104,8 @@ namespace Netflix.Api.Controllers
                     ReleaseYear: releaseYear,
                     IsNetflixOriginal: false,
                     TrailerUrl: trailerUrl,
-                    GenreIds: tmdb.Genre_Ids
+                    GenreIds: tmdb.Genre_Ids,
+                    MediaType: mediaType
                 ));
             }
             return result;
@@ -188,12 +195,26 @@ namespace Netflix.Api.Controllers
         }
 
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetMovieById(int id)
+        public async Task<IActionResult> GetMovieById(int id, [FromQuery] string mediaType = "movie")
         {
             try
             {
-                var tmdbMovie = await _tmdbService.GetMovieDetailsAsync(id);
-                if (tmdbMovie == null) return NotFound(new { status = "error", message = "Không tìm thấy movie." });
+                TmdbMovieDto? tmdbMovie;
+                string resolvedMediaType;
+
+                if (mediaType.ToLower() == "tv")
+                {
+                    // Gọi TV show endpoint để lấy đúng thông tin (backdrop, poster, genres, cast)
+                    tmdbMovie = await _tmdbService.GetTvShowDetailsAsync(id);
+                    resolvedMediaType = "tv";
+                }
+                else
+                {
+                    tmdbMovie = await _tmdbService.GetMovieDetailsAsync(id);
+                    resolvedMediaType = "movie";
+                }
+
+                if (tmdbMovie == null) return NotFound(new { status = "error", message = "Không tìm thấy nội dung." });
 
                 var movies = await MergeWithLocalDbAsync(new[] { tmdbMovie });
                 var movie = movies.FirstOrDefault();
@@ -205,7 +226,7 @@ namespace Netflix.Api.Controllers
                 var detail = new MovieDetailDto(
                     movie.Id, movie.Title, movie.Description, movie.PosterUrl, movie.BackdropUrl,
                     movie.MaturityLevel, movie.ReleaseYear, movie.IsNetflixOriginal, movie.TrailerUrl,
-                    movie.GenreIds, genreNames, castNames
+                    movie.GenreIds, genreNames, castNames, resolvedMediaType
                 );
 
                 return Ok(new { status = "success", data = detail });

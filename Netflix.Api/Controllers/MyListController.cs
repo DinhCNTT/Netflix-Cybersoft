@@ -66,7 +66,8 @@ namespace Netflix.Api.Controllers
                 movie.ReleaseYear,
                 movie.IsNetflixOriginal,
                 movie.TrailerUrl,
-                movie.MovieGenres.Select(mg => mg.GenreId).ToList()
+                movie.MovieGenres.Select(mg => mg.GenreId).ToList(),
+                "movie"
             );
         }
 

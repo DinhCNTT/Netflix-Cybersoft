@@ -49,6 +49,7 @@ const mapMovie = (movie) => ({
   genreIds: movie?.genreIds || [],
   genreNames: movie?.genreNames || [],
   castNames: movie?.castNames || [],
+  mediaType: movie?.mediaType || "movie",  // "movie" | "tv"
 });
 
 const mapGenre = (genre) => ({
@@ -113,8 +114,8 @@ export const movieApi = {
     return safeArray(unwrapData(response)).map(mapMovie);
   },
 
-  async getMovieById(movieId) {
-    const response = await axiosClient.get(`/movies/${movieId}`);
+  async getMovieById(movieId, mediaType = "movie") {
+    const response = await axiosClient.get(`/movies/${movieId}?mediaType=${mediaType}`);
     const data = unwrapData(response);
     return data ? mapMovie(data) : null;
   },
