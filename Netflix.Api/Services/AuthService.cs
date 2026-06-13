@@ -116,15 +116,16 @@ namespace Netflix.Api.Services
 
         public async Task<bool> VerifyEmailAsync(string token)
         {
+            if (token != null) token = token.Trim();
             var user = await _authRepository.GetUserByVerificationTokenAsync(token);
             if (user == null)
                 throw new Exception("Link xác thực không hợp lệ hoặc đã hết hạn.");
 
             if (user.IsEmailVerified)
-                throw new Exception("Tài khoản này đã được xác thực trước đó.");
+                return true; // Nếu đã xác thực rồi thì cứ trả về true để UI báo thành công, tránh lỗi React Strict Mode gọi 2 lần
 
             user.IsEmailVerified = true;
-            user.VerificationToken = null; // Clear token sau khi dùng
+            // Bỏ dòng: user.VerificationToken = null; để tránh lỗi khi người dùng F5 hoặc gọi đúp
             
             await _authRepository.UpdateUserAsync(user);
             
