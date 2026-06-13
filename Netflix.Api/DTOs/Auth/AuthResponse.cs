@@ -7,6 +7,7 @@ namespace Netflix.Api.DTOs.Auth
         string Role,
         bool IsSubscribed,
         string AccessToken,
-        string RefreshToken
+        string RefreshToken,
+        Guid? SessionId = null
     );
 }

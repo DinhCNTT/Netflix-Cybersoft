@@ -11,7 +11,13 @@ import ManageProfiles from "../pages/Profiles/ManageProfiles";
 import EditProfile from "../pages/Profiles/EditProfile";
 import Browse from "../pages/Browse/Browse";
 import MyList from "../pages/Browse/MyList";
+import Search from "../pages/Browse/Search";
+import Devices from "../pages/Browse/Devices";
 import Watch from "../pages/Watch/Watch";
+import AdminDashboard from "../pages/Admin/AdminDashboard";
+import AdminUsers from "../pages/Admin/AdminUsers";
+import AdminMovies from "../pages/Admin/AdminMovies";
+import AdminAnalytics from "../pages/Admin/AdminAnalytics";
 import useAuthStore from "../store/authStore";
 import useProfileStore from "../store/profileStore";
 
@@ -61,6 +67,16 @@ const PublicRoute = ({ children }) => {
   if (isAuthenticated) {
     return <Navigate to="/browse" replace />;
   }
+  return children;
+};
+
+// Admin-only route
+const AdminRoute = ({ children }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "Admin") return <Navigate to="/browse" replace />;
   return children;
 };
 
@@ -132,6 +148,24 @@ const AppRouter = () => {
         />
 
         <Route
+          path="/search"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Search />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/account/devices"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Devices />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/watch/:movieId"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={true}>
@@ -185,6 +219,40 @@ const AppRouter = () => {
                 <Checkout />
               </div>
             </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/movies"
+          element={
+            <AdminRoute>
+              <AdminMovies />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <AdminRoute>
+              <AdminAnalytics />
+            </AdminRoute>
           }
         />
 

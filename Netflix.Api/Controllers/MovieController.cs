@@ -279,6 +279,24 @@ namespace Netflix.Api.Controllers
             }
         }
 
+        [HttpGet("search")]
+        public async Task<IActionResult> Search([FromQuery] string query)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(query))
+                    return Ok(new { status = "success", data = new List<object>() });
+
+                var tmdbRes = await _tmdbService.SearchMultiAsync(query);
+                var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(40));
+                return Ok(new { status = "success", data = movies });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+        }
+
         [HttpGet("{id:int}/recommendations")]
         public async Task<IActionResult> GetRecommendations(int id)
         {

@@ -13,5 +13,6 @@ namespace Netflix.Api.Services
         Task<TmdbMovieDto?> GetMovieDetailsAsync(int tmdbId);
         Task<TmdbGenreResponseDto> GetGenresAsync();
         Task<TmdbMovieDto?> GetTvShowDetailsAsync(int tmdbId);
+        Task<TmdbResponseDto<TmdbMovieDto>> SearchMultiAsync(string query);
     }
 }

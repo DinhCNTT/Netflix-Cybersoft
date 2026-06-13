@@ -49,7 +49,7 @@ const mapMovie = (movie) => ({
   genreIds: movie?.genreIds || [],
   genreNames: movie?.genreNames || [],
   castNames: movie?.castNames || [],
-  mediaType: movie?.mediaType || "movie",  // "movie" | "tv"
+  mediaType: movie?.mediaType || "movie", // "movie" | "tv"
 });
 
 const mapGenre = (genre) => ({
@@ -110,12 +110,16 @@ export const movieApi = {
   },
 
   async getRecommendations(movieId) {
-    const response = await axiosClient.get(`/movies/${movieId}/recommendations`);
+    const response = await axiosClient.get(
+      `/movies/${movieId}/recommendations`,
+    );
     return safeArray(unwrapData(response)).map(mapMovie);
   },
 
   async getMovieById(movieId, mediaType = "movie") {
-    const response = await axiosClient.get(`/movies/${movieId}?mediaType=${mediaType}`);
+    const response = await axiosClient.get(
+      `/movies/${movieId}?mediaType=${mediaType}`,
+    );
     const data = unwrapData(response);
     return data ? mapMovie(data) : null;
   },
@@ -180,6 +184,14 @@ export const movieApi = {
 
   async getSimilarMovies(movieId) {
     const response = await axiosClient.get(`/movies/${movieId}/similar`);
+    return safeArray(unwrapData(response)).map(mapMovie);
+  },
+
+  async searchMovies(query) {
+    if (!query || !query.trim()) return [];
+    const response = await axiosClient.get(
+      `/movies/search?query=${encodeURIComponent(query.trim())}`,
+    );
     return safeArray(unwrapData(response)).map(mapMovie);
   },
 };

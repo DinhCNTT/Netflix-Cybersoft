@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Bell, ChevronDown } from "lucide-react";
+import { Search, Bell, ChevronDown, X } from "lucide-react";
 import useAuthStore from "../../store/authStore";
 import useProfileStore from "../../store/profileStore";
 import MobileMenu from "./MobileMenu";
@@ -13,8 +13,11 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const accountMenuRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
@@ -84,7 +87,7 @@ const Navbar = () => {
       setSelectedProfileForPin(profile);
     } else {
       setActiveProfile(profile);
-      window.location.href = '/browse';
+      window.location.href = "/browse";
     }
   };
 
@@ -92,7 +95,7 @@ const Navbar = () => {
     if (selectedProfileForPin) {
       setActiveProfile(selectedProfileForPin);
       setSelectedProfileForPin(null);
-      window.location.href = '/browse';
+      window.location.href = "/browse";
     }
   };
 
@@ -104,6 +107,24 @@ const Navbar = () => {
   const toggleMobileMenu = () => {
     setShowMobileMenu((current) => !current);
     setShowAccountMenu(false);
+  };
+
+  const openSearch = () => {
+    setSearchOpen(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  };
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      closeSearch();
+    }
   };
 
   return (
@@ -182,15 +203,46 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-4 md:gap-5">
-        <Search className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
-        {activeProfile?.isKids && (
-          <p 
-             className="hidden text-[16px] font-bold text-white md:block"
+        {/* Search */}
+        {searchOpen ? (
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex items-center gap-2 rounded border border-white bg-black/70 px-3 py-1 backdrop-blur-sm"
           >
+            <Search className="h-4 w-4 shrink-0 text-white" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tiêu đề, thể loại, diễn viên..."
+              className="w-40 bg-transparent text-sm text-white placeholder-[#aaa] outline-none md:w-52"
+            />
+            <button
+              type="button"
+              onClick={closeSearch}
+              className="text-[#aaa] hover:text-white"
+              aria-label="Đóng tìm kiếm"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-label="Tìm kiếm"
+            className="flex items-center"
+          >
+            <Search className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
+          </button>
+        )}
+        {activeProfile?.isKids && (
+          <p className="hidden text-[16px] font-bold text-white md:block">
             Trẻ em
           </p>
         )}
-        
+
         <div className="relative">
           <Bell className="h-5 w-5 cursor-pointer text-white md:h-6 md:w-6" />
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e50914] px-1 text-[10px] font-semibold leading-none text-white">
@@ -205,10 +257,8 @@ const Navbar = () => {
             alt="Profile"
             className="h-7 w-7 rounded object-cover lg:h-8 lg:w-8"
           />
-          <ChevronDown
-            className="h-4 w-4 text-white transition-transform duration-300 group-hover:rotate-180 group-hover:text-gray-300"
-          />
-          
+          <ChevronDown className="h-4 w-4 text-white transition-transform duration-300 group-hover:rotate-180 group-hover:text-gray-300" />
+
           {/* Vùng vô hình kéo dài để bridge hover từ avatar xuống menu */}
           <div className="pointer-events-none absolute inset-0 -bottom-8 group-hover:pointer-events-auto"></div>
 

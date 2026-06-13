@@ -20,6 +20,7 @@ namespace Netflix.Api.Data
         public DbSet<WatchHistory> WatchHistories { get; set; }
         public DbSet<MyList> MyLists { get; set; }
         public DbSet<Rating> Ratings { get; set; }
+        public DbSet<ActiveSession> ActiveSessions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -129,6 +130,12 @@ namespace Netflix.Api.Data
 
             modelBuilder.Entity<Rating>()
                 .HasCheckConstraint("CK_Ratings_Value", "\"Value\" IN (-1, 1)");
+
+            modelBuilder.Entity<ActiveSession>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             MovieSeedData.Seed(modelBuilder);
         }

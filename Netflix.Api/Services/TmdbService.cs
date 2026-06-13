@@ -183,5 +183,19 @@ namespace Netflix.Api.Services
             if (result != null) result.Media_Type = "tv";
             return result;
         }
+
+        public async Task<TmdbResponseDto<TmdbMovieDto>> SearchMultiAsync(string query)
+        {
+            var encoded = Uri.EscapeDataString(query);
+            var result = await GetAsync<TmdbResponseDto<TmdbMovieDto>>($"/search/multi?query={encoded}");
+            if (result != null)
+            {
+                // Loại bỏ kết quả kiểu "person" và nội dung người lớn
+                result.Results = result.Results
+                    .Where(m => m.Media_Type != "person" && !m.Adult)
+                    .ToList();
+            }
+            return result ?? new TmdbResponseDto<TmdbMovieDto>();
+        }
     }
 }

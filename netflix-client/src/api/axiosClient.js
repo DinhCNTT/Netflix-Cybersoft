@@ -14,6 +14,7 @@ axiosClient.interceptors.request.use(
   (config) => {
     const accessToken = useAuthStore.getState().accessToken;
     const activeProfile = useProfileStore.getState().activeProfile;
+    const sessionId = useAuthStore.getState().sessionId;
 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
@@ -21,6 +22,10 @@ axiosClient.interceptors.request.use(
 
     if (activeProfile?.id) {
       config.headers["X-Profile-Id"] = activeProfile.id;
+    }
+
+    if (sessionId) {
+      config.headers["X-Session-Id"] = sessionId;
     }
 
     return config;

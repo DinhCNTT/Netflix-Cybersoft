@@ -11,10 +11,12 @@ namespace Netflix.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IActiveSessionService _sessionService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IActiveSessionService sessionService)
         {
             _authService = authService;
+            _sessionService = sessionService;
         }
 
         [HttpPost("register")]
@@ -37,7 +39,10 @@ namespace Netflix.Api.Controllers
             try
             {
                 var response = await _authService.LoginAsync(request);
-                return Ok(new { message = "Login successful", data = response });
+                var ua = Request.Headers.UserAgent.ToString();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var sessionId = await _sessionService.CreateAsync(response.Id, ua, ip);
+                return Ok(new { message = "Login successful", data = response with { SessionId = sessionId } });
             }
             catch (Exception ex)
             {
@@ -72,6 +77,13 @@ namespace Netflix.Api.Controllers
                 if (Guid.TryParse(userIdClaim, out Guid userId))
                 {
                     await _authService.LogoutAsync(userId);
+
+                    // Remove active session record
+                    if (Request.Headers.TryGetValue("X-Session-Id", out var sessionHeader)
+                        && Guid.TryParse(sessionHeader.FirstOrDefault(), out var sessionId))
+                    {
+                        await _sessionService.RemoveAsync(sessionId);
+                    }
                 }
 
                 return Ok(new { status = "success", message = "Logged out successfully" });
@@ -150,7 +162,10 @@ namespace Netflix.Api.Controllers
             try
             {
                 var response = await _authService.LoginWithOtpAsync(request.Email, request.OtpCode);
-                return Ok(new { message = "Đăng nhập thành công", data = response });
+                var ua = Request.Headers.UserAgent.ToString();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var sessionId = await _sessionService.CreateAsync(response.Id, ua, ip);
+                return Ok(new { message = "Đăng nhập thành công", data = response with { SessionId = sessionId } });
             }
             catch (Exception ex)
             {

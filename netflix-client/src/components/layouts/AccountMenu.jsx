@@ -1,6 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, ArrowLeftRight, User, HelpCircle, Lock } from "lucide-react";
+import {
+  Pencil,
+  ArrowLeftRight,
+  User,
+  HelpCircle,
+  Lock,
+  Monitor,
+  ShieldCheck,
+} from "lucide-react";
 import useProfileStore from "../../store/profileStore";
+import useAuthStore from "../../store/authStore";
 
 const AccountMenu = ({
   visible,
@@ -11,6 +20,8 @@ const AccountMenu = ({
   onClose,
 }) => {
   const profiles = useProfileStore((state) => state.profiles) || [];
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === "Admin";
   const navigate = useNavigate();
 
   if (!visible) {
@@ -23,29 +34,31 @@ const AccountMenu = ({
   return (
     <div
       className="absolute right-0 top-0 z-40 motion-menu-in flex w-[230px] flex-col bg-[#141414] text-sm"
-      style={{ border: '1px solid #444' }}
+      style={{ border: "1px solid #444" }}
       onClick={(event) => event.stopPropagation()}
     >
       {/* Mũi tên trỏ lên màu trắng (outline) */}
       <div
         className="absolute right-3"
         style={{
-          top: '-9px',
-          width: 0, height: 0,
-          borderLeft: '8px solid transparent',
-          borderRight: '8px solid transparent',
-          borderBottom: '9px solid #ffffff',
+          top: "-9px",
+          width: 0,
+          height: 0,
+          borderLeft: "8px solid transparent",
+          borderRight: "8px solid transparent",
+          borderBottom: "9px solid #ffffff",
         }}
       ></div>
       {/* Lớp trong của mũi tên (màu nền) */}
       <div
         className="absolute right-[14px]"
         style={{
-          top: '-6px',
-          width: 0, height: 0,
-          borderLeft: '7px solid transparent',
-          borderRight: '7px solid transparent',
-          borderBottom: '7px solid #141414',
+          top: "-6px",
+          width: 0,
+          height: 0,
+          borderLeft: "7px solid transparent",
+          borderRight: "7px solid transparent",
+          borderBottom: "7px solid #141414",
         }}
       ></div>
 
@@ -54,7 +67,7 @@ const AccountMenu = ({
           <div
             key={p.id}
             onClick={() => {
-               onSelectProfile?.(p);
+              onSelectProfile?.(p);
             }}
             className="group/item flex w-full cursor-pointer flex-row items-center gap-3"
           >
@@ -97,9 +110,25 @@ const AccountMenu = ({
           <User className="w-5 h-5 text-gray-400 p-[1px]" />
           <span className="text-sm">Tài khoản</span>
         </Link>
-        <button
-          className="flex items-center gap-3 text-[#e5e5e5] hover:underline text-left"
+        <Link
+          to="/account/devices"
+          onClick={() => onClose?.()}
+          className="flex items-center gap-3 text-[#e5e5e5] hover:underline"
         >
+          <Monitor className="w-5 h-5 text-gray-400 p-[1px]" />
+          <span className="text-sm">Quản lý thiết bị</span>
+        </Link>
+        {isAdmin && (
+          <Link
+            to="/admin"
+            onClick={() => onClose?.()}
+            className="flex items-center gap-3 text-[#e50914] hover:underline"
+          >
+            <ShieldCheck className="w-5 h-5 p-[1px]" />
+            <span className="text-sm font-semibold">Admin Panel</span>
+          </Link>
+        )}
+        <button className="flex items-center gap-3 text-[#e5e5e5] hover:underline text-left">
           <HelpCircle className="w-5 h-5 text-gray-400 p-[1px]" />
           <span className="text-sm">Trung tâm trợ giúp</span>
         </button>

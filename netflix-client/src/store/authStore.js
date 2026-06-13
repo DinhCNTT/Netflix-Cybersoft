@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 const useAuthStore = create(
   persist(
@@ -7,10 +7,17 @@ const useAuthStore = create(
       user: null,
       accessToken: null,
       refreshToken: null,
+      sessionId: null,
       isAuthenticated: false,
 
-      setAuth: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: !!accessToken }),
+      setAuth: (user, accessToken, refreshToken, sessionId = null) =>
+        set({
+          user,
+          accessToken,
+          refreshToken,
+          sessionId,
+          isAuthenticated: !!accessToken,
+        }),
 
       setTokens: (accessToken, refreshToken) =>
         set((state) => ({
@@ -20,12 +27,19 @@ const useAuthStore = create(
           isAuthenticated: !!accessToken,
         })),
 
-      logout: () => set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      logout: () =>
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          sessionId: null,
+          isAuthenticated: false,
+        }),
     }),
     {
-      name: 'netflix-auth-storage', // unique name
-    }
-  )
+      name: "netflix-auth-storage", // unique name
+    },
+  ),
 );
 
 export default useAuthStore;
