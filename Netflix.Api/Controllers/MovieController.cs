@@ -52,7 +52,11 @@ namespace Netflix.Api.Controllers
                 !(m.Title ?? "").ToLower().Contains("sex") &&
                 !(m.Name ?? "").ToLower().Contains("sex") &&
                 !(m.Title ?? "").ToLower().Contains("erotic") &&
-                !(m.Name ?? "").ToLower().Contains("erotic")
+                !(m.Name ?? "").ToLower().Contains("erotic") &&
+                !(m.Title ?? "").ToLower().Contains("18+") &&
+                !(m.Name ?? "").ToLower().Contains("18+") &&
+                !(m.Overview ?? "").ToLower().Contains("khiêu dâm") &&
+                !(m.Overview ?? "").ToLower().Contains("phim cấp 3")
             ).ToList();
 
             var tmdbIds = filteredTmdbMovies.Select(m => m.Id).ToList();
@@ -253,21 +257,38 @@ namespace Netflix.Api.Controllers
             }
         }
         [HttpGet("discover")]
-        public async Task<IActionResult> Discover([FromQuery] string type = "movie", [FromQuery] string genres = "", [FromQuery] string country = "", [FromQuery] string keywords = "", [FromQuery] string language = "")
+        public async Task<IActionResult> Discover(
+            [FromQuery] string type = "movie", 
+            [FromQuery] string genres = "", 
+            [FromQuery] string country = "", 
+            [FromQuery] string keywords = "", 
+            [FromQuery] string language = "", 
+            [FromQuery(Name = "without_genres")] string withoutGenres = "",
+            [FromQuery(Name = "sort_by")] string sortBy = "popularity.desc",
+            [FromQuery(Name = "vote_count.gte")] int? voteCountGte = null,
+            [FromQuery(Name = "primary_release_date.gte")] string releaseDateGte = null,
+            [FromQuery(Name = "primary_release_date.lte")] string releaseDateLte = null)
         {
             try
             {
                 var profile = await ResolveProfileAsync(GetUserId());
                 var isKids = profile?.IsKids ?? false;
                 
+                // Mẹo cực kỳ hiệu quả để lọc phim rác/softcore trên TMDB: Yêu cầu tối thiểu số lượt vote.
+                // Phim rác thường có popularity ảo nhưng lượt vote rất thấp (thường < 10).
+                if (!voteCountGte.HasValue) 
+                {
+                    voteCountGte = 50;
+                }
+                
                 TmdbResponseDto<TmdbMovieDto> tmdbRes;
                 if (type.ToLower() == "tv")
                 {
-                    tmdbRes = await _tmdbService.DiscoverTvShowsAsync(genres, country, keywords, language, isKids);
+                    tmdbRes = await _tmdbService.DiscoverTvShowsAsync(genres, country, keywords, language, isKids, withoutGenres, sortBy, voteCountGte, releaseDateGte, releaseDateLte);
                 }
                 else
                 {
-                    tmdbRes = await _tmdbService.DiscoverMoviesAsync(genres, country, keywords, language, isKids);
+                    tmdbRes = await _tmdbService.DiscoverMoviesAsync(genres, country, keywords, language, isKids, withoutGenres, sortBy, voteCountGte, releaseDateGte, releaseDateLte);
                 }
                 
                 var movies = await MergeWithLocalDbAsync(tmdbRes.Results.Take(20));

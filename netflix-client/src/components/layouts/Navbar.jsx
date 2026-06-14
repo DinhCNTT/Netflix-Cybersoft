@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, Bell, ChevronDown, X } from "lucide-react";
 import useAuthStore from "../../store/authStore";
 import useProfileStore from "../../store/profileStore";
@@ -148,34 +148,77 @@ const Navbar = () => {
         </Link>
         <ul className="hidden items-center gap-5 text-[16px] font-medium tracking-[0.01em] text-[#e5e5e5] lg:flex xl:gap-6">
           <li>
-            <button
-              type="button"
-              onClick={() => navigate("/browse")}
-              className="cursor-pointer text-white transition-colors duration-200 hover:text-[#b3b3b3]"
+            <NavLink
+              to="/browse"
+              end
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
             >
               Trang chủ
-            </button>
-          </li>
-          <li className="cursor-pointer transition-colors duration-200 hover:text-[#b3b3b3]">
-            Series
-          </li>
-          <li className="cursor-pointer transition-colors duration-200 hover:text-[#b3b3b3]">
-            Phim
-          </li>
-          <li className="cursor-pointer transition-colors duration-200 hover:text-[#b3b3b3]">
-            Mới & Phổ biến
+            </NavLink>
           </li>
           <li>
-            <button
-              type="button"
-              onClick={() => navigate("/browse/my-list")}
-              className="cursor-pointer transition-colors duration-200 hover:text-[#b3b3b3]"
+            <NavLink
+              to="/browse/series"
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive || window.location.pathname.startsWith('/browse/series') ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
+            >
+              Series
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/browse/movies"
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive || window.location.pathname.startsWith('/browse/movies') ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
+            >
+              Phim
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/latest"
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive || window.location.pathname.startsWith('/latest') ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
+            >
+              Mới & Phổ biến
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/browse/my-list"
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive || window.location.pathname.startsWith('/browse/my-list') ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
             >
               Danh sách của tôi
-            </button>
+            </NavLink>
           </li>
-          <li className="cursor-pointer text-[#d2d2d2] transition-colors duration-200 hover:text-white">
-            Duyệt tìm theo ngôn ngữ
+          <li>
+            <NavLink
+              to="/browse/audio"
+              className={({ isActive }) =>
+                `cursor-pointer transition-colors duration-200 outline-none ${
+                  isActive || window.location.pathname.startsWith('/browse/audio') ? "text-white font-bold" : "text-[#e5e5e5] hover:text-[#b3b3b3]"
+                }`
+              }
+            >
+              Duyệt tìm theo ngôn ngữ
+            </NavLink>
           </li>
         </ul>
 

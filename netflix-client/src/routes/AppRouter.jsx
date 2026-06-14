@@ -10,9 +10,15 @@ import Checkout from "../pages/Auth/Checkout";
 import ManageProfiles from "../pages/Profiles/ManageProfiles";
 import EditProfile from "../pages/Profiles/EditProfile";
 import Browse from "../pages/Browse/Browse";
+import Series from "../pages/Browse/Series";
+import SeriesGenre from "../pages/Browse/SeriesGenre";
+import Movies from "../pages/Browse/Movies";
+import MovieGenre from "../pages/Browse/MovieGenre";
+import Latest from "../pages/Browse/Latest";
 import MyList from "../pages/Browse/MyList";
 import Search from "../pages/Browse/Search";
 import Devices from "../pages/Browse/Devices";
+import BrowseByLanguage from "../pages/Browse/BrowseByLanguage";
 import Watch from "../pages/Watch/Watch";
 import AdminDashboard from "../pages/Admin/AdminDashboard";
 import AdminUsers from "../pages/Admin/AdminUsers";
@@ -139,10 +145,64 @@ const AppRouter = () => {
         />
 
         <Route
+          path="/browse/series"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Series />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/browse/series/genre/:genreId"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <SeriesGenre />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/browse/movies"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Movies />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/browse/movies/genre/:genreId"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <MovieGenre />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/latest"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <Latest />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/browse/my-list"
           element={
             <ProtectedRoute requireSubscription={true} requireProfile={true}>
               <MyList />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/browse/audio"
+          element={
+            <ProtectedRoute requireSubscription={true} requireProfile={true}>
+              <BrowseByLanguage />
             </ProtectedRoute>
           }
         />

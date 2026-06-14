@@ -93,11 +93,11 @@ const MovieHoverPortal = ({
       onMouseLeave={onPortalLeave}
     >
       <div
-        className={`overflow-hidden rounded-md bg-[#181818] shadow-[0_10px_34px_rgba(0,0,0,0.65)] ${zoomClass}`}
+        className={`rounded-md bg-[#181818] shadow-[0_10px_34px_rgba(0,0,0,0.65)] ${zoomClass}`}
       >
         <div className="relative">
           <img
-            className="aspect-video w-full object-cover"
+            className="aspect-video w-full rounded-t-md object-cover"
             src={imageUrl}
             alt={movie.title}
             loading="lazy"
@@ -110,31 +110,38 @@ const MovieHoverPortal = ({
             <button
               type="button"
               onClick={() => onPlay?.(movie)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white transition hover:bg-gray-200"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white transition hover:bg-gray-200"
               aria-label={`Play ${movie.title}`}
             >
               <Play className="ml-0.5 h-5 w-5 fill-black text-black" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => onToggleFavourite?.(movie)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 bg-[#232323] transition hover:border-white"
-              aria-label={isFavourite ? "Remove from list" : "Add to list"}
-            >
-              {isFavourite ? (
-                <Check className="h-5 w-5 text-white" />
-              ) : (
-                <Plus className="h-5 w-5 text-white" />
-              )}
-            </button>
+            <div className="group relative flex">
+              <div className="pointer-events-none absolute bottom-[calc(100%+14px)] left-1/2 z-30 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <div className="relative whitespace-nowrap rounded-md bg-[#e6e6e6] px-3 py-[6px] text-[15px] font-bold text-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.4)] after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-[#e6e6e6]">
+                  {isFavourite ? "Xóa khỏi Danh sách của tôi" : "Thêm vào Danh sách của tôi"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onToggleFavourite?.(movie)}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-gray-300 bg-[#232323] transition hover:border-white"
+                aria-label={isFavourite ? "Remove from list" : "Add to list"}
+              >
+                {isFavourite ? (
+                  <Check className="h-5 w-5 text-white" />
+                ) : (
+                  <Plus className="h-5 w-5 text-white" />
+                )}
+              </button>
+            </div>
 
             {onRemoveFromRow && (
               <button
                 type="button"
                 onClick={() => onRemoveFromRow(movie)}
                 title="X\u00f3a kh\u1ecfi h\u00e0ng"
-                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 bg-[#232323] text-white transition hover:border-white"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-gray-300 bg-[#232323] text-white transition hover:border-white"
                 aria-label="X\u00f3a kh\u1ecfi h\u00e0ng"
               >
                 <X className="h-5 w-5" />
@@ -171,7 +178,7 @@ const MovieHoverPortal = ({
                   type="button"
                   onMouseEnter={() => setReactionLabel("Không thích")}
                   onClick={() => handleRate(movie, -1, "dislike")}
-                  className={`absolute top-0 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white
+                  className={`absolute top-0 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white
                     ${showReactionTray ? "-translate-x-[54px] opacity-100" : "opacity-0"}
                     ${isSelected(movie.id, "dislike") ? "border-white" : "border-[#6a6a6a]"}`}
                   aria-label="Dislike"
@@ -185,7 +192,7 @@ const MovieHoverPortal = ({
                   type="button"
                   onMouseEnter={() => setReactionLabel("Thích")}
                   onClick={() => handleRate(movie, 1, "like")}
-                  className={`absolute top-0 left-1/2 z-20 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:scale-105 hover:border-white
+                  className={`absolute top-0 left-1/2 z-20 flex h-10 w-10 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:scale-105 hover:border-white
                     ${isSelected(movie.id, "like") ? "border-white" : "border-[#6a6a6a]"}`}
                   aria-label="Like"
                 >
@@ -198,7 +205,7 @@ const MovieHoverPortal = ({
                   type="button"
                   onMouseEnter={() => setReactionLabel("Rất thích")}
                   onClick={() => handleRate(movie, 2, "superlike")}
-                  className={`absolute top-0 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white
+                  className={`absolute top-0 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border-2 bg-[#232323] text-white transition-all duration-200 hover:border-white
                     ${showReactionTray ? "translate-x-[14px] opacity-100" : "opacity-0"}
                     ${isSelected(movie.id, "superlike") ? "border-white" : "border-[#6a6a6a]"}`}
                   aria-label="Super like"
@@ -213,7 +220,7 @@ const MovieHoverPortal = ({
             <button
               type="button"
               onClick={() => onMoreInfo?.(movie)}
-              className="ml-auto flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 transition hover:border-white"
+              className="ml-auto flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-gray-300 transition hover:border-white"
               aria-label={`More info ${movie.title}`}
             >
               <ChevronDown className="h-5 w-5 text-white" />

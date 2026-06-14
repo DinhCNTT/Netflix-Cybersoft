@@ -10,7 +10,7 @@ const PREVIEW_LENGTH_SECONDS = 18;
 const DEFAULT_HERO_TRAILER =
   "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
-const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
+const HeroBanner = ({ movie, trailerUrl, onMoreInfo, children }) => {
   const navigate = useNavigate();
   const accessToken = useAuthStore((state) => state.accessToken);
   const videoRef = useRef(null);
@@ -256,6 +256,8 @@ const HeroBanner = ({ movie, trailerUrl, onMoreInfo }) => {
       <div className="absolute inset-0 bg-black/20" />
       <div className="absolute bottom-0 left-0 right-[15%] top-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-[14.7vw] bg-gradient-to-t from-[#141414] via-[#141414cc] to-transparent" />
+
+      {children}
 
       <div className="relative z-10 h-full">
         <div className="motion-fade-in absolute bottom-[35%] left-4 right-4 flex max-w-[92%] flex-col justify-end md:left-[4%] md:top-0 md:w-[40%] md:max-w-none md:right-auto 2xl:left-[60px]">

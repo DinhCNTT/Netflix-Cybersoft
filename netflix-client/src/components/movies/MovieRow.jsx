@@ -43,9 +43,11 @@ const MovieRow = ({
 
   return (
     <section className="group relative mt-[0.7vw] text-white">
-      <h2 className="mb-[0.5vw] px-4 text-[3.2vw] font-medium tracking-[0.01em] text-[#e5e5e5] sm:text-lg md:px-12 md:text-[1.35vw]">
-        {title}
-      </h2>
+      {title && (
+        <h2 className="mb-[0.5vw] px-4 text-[3.2vw] font-medium tracking-[0.01em] text-[#e5e5e5] sm:text-lg md:px-12 md:text-[1.35vw]">
+          {title}
+        </h2>
+      )}
 
       <div className="pointer-events-none absolute left-0 top-0 z-20 hidden h-full w-12 bg-gradient-to-r from-[#141414] to-transparent opacity-0 transition duration-300 group-hover:opacity-100 md:block" />
       <div className="pointer-events-none absolute right-0 top-0 z-20 hidden h-full w-12 bg-gradient-to-l from-[#141414] to-transparent opacity-0 transition duration-300 group-hover:opacity-100 md:block" />

@@ -21,24 +21,33 @@ const MobileMenu = ({ visible, onClose, onNavigate }) => {
         </button>
         <button
           type="button"
-          onClick={() => onClose?.()}
+          onClick={() => {
+            onNavigate?.("/browse/series");
+            onClose?.();
+          }}
           className="px-3 text-center text-white hover:underline"
         >
           Series
         </button>
         <button
           type="button"
-          onClick={() => onClose?.()}
+          onClick={() => {
+            onNavigate?.("/browse/movies");
+            onClose?.();
+          }}
           className="px-3 text-center text-white hover:underline"
         >
-          Films
+          Phim
         </button>
         <button
           type="button"
-          onClick={() => onClose?.()}
+          onClick={() => {
+            onNavigate?.("/latest");
+            onClose?.();
+          }}
           className="px-3 text-center text-white hover:underline"
         >
-          New & Popular
+          Mới & Phổ biến
         </button>
         <button
           type="button"
@@ -49,6 +58,16 @@ const MobileMenu = ({ visible, onClose, onNavigate }) => {
           className="px-3 text-center text-white hover:underline"
         >
           My List
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.("/browse/audio");
+            onClose?.();
+          }}
+          className="px-3 text-center text-white hover:underline"
+        >
+          Duyệt tìm theo ngôn ngữ
         </button>
       </div>
     </div>

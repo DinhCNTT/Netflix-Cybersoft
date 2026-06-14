@@ -22,6 +22,7 @@ const MovieInfoModal = ({
   isInMyList = false,
   onToggleMyList,
   onPlay,
+  contextGenre,
 }) => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(isOpen);
@@ -69,7 +70,16 @@ const MovieInfoModal = ({
   const standaloneDuration = isStandaloneMovie ? seasons[0].episodes[0].durationMinutes : null;
   const heroImage =
     fullMovie?.backdropUrl || fullMovie?.posterUrl || "/images/hero.jpg";
-  const displayGenres = (fullMovie?.genreNames || []).slice(0, 3);
+  let displayGenres = (fullMovie?.genreNames || []).slice(0, 3);
+  if (contextGenre) {
+    const isAlreadyPresent = displayGenres.some(
+      (g) => g.toLowerCase() === contextGenre.toLowerCase() || 
+             g.toLowerCase() === `phim ${contextGenre.toLowerCase()}`
+    );
+    if (!isAlreadyPresent) {
+      displayGenres = [contextGenre, ...displayGenres].slice(0, 3);
+    }
+  }
 
   const displayMaturityLevel = useMemo(() => {
     return getMappedMaturity(fullMovie?.maturityLevel);
@@ -242,7 +252,7 @@ const MovieInfoModal = ({
         <button
           type="button"
           onClick={handleClose}
-          className="absolute right-4 top-4 z-[100] flex h-10 w-10 items-center justify-center rounded-full bg-[#181818] text-white transition hover:bg-[#181818]/80"
+          className="absolute right-4 top-4 z-[100] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#181818] text-white transition hover:bg-[#181818]/80"
           aria-label="Close"
         >
           <X className="h-6 w-6" />
@@ -282,7 +292,7 @@ const MovieInfoModal = ({
                     onPlay?.(movie);
                     navigate(`/watch/${movie.id}`);
                   }}
-                  className="inline-flex items-center gap-3 rounded-md bg-white px-8 py-2.5 text-[17px] font-bold text-black transition hover:bg-white/80"
+                  className="inline-flex cursor-pointer items-center gap-3 rounded-md bg-white px-8 py-2.5 text-[17px] font-bold text-black transition hover:bg-white/80"
                 >
                   <Play className="h-6 w-6 fill-black text-black" />
                   Phát
@@ -297,7 +307,7 @@ const MovieInfoModal = ({
                   <button
                     type="button"
                     onClick={handleToggleMyList}
-                    className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
+                    className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
                     aria-label={
                       isInMyList ? "Remove from My List" : "Add to My List"
                     }
@@ -343,7 +353,7 @@ const MovieInfoModal = ({
                         setReactionLabel("Không thích")
                       }
                       onClick={() => handleRateWithKey(-1, "dislike")}
-                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
+                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-200 ${
                         showReactionTray
                           ? "-translate-x-[64px] opacity-100 hover:bg-white/10"
                           : "-translate-x-1/2 opacity-0 pointer-events-none"
@@ -361,7 +371,7 @@ const MovieInfoModal = ({
                       type="button"
                       onMouseEnter={() => setReactionLabel("Thích")}
                       onClick={() => handleRateWithKey(1, "like")}
-                      className={`absolute left-1/2 top-1/2 z-20 flex h-[42px] w-[42px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
+                      className={`absolute left-1/2 top-1/2 z-20 flex h-[42px] w-[42px] -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-200 ${
                         showReactionTray
                           ? "h-[38px] w-[38px] border-transparent bg-transparent hover:bg-white/10"
                           : "border-[1.5px] border-white/60 bg-[#2a2a2a]/60 hover:border-white hover:bg-white/20"
@@ -381,7 +391,7 @@ const MovieInfoModal = ({
                         setReactionLabel("Rất thích")
                       }
                       onClick={() => handleRateWithKey(1, "superlike")}
-                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 items-center justify-center rounded-full text-white transition-all duration-200 ${
+                      className={`absolute left-1/2 top-1/2 z-10 flex h-[38px] w-[38px] -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-200 ${
                         showReactionTray
                           ? "translate-x-[26px] opacity-100 hover:bg-white/10"
                           : "-translate-x-1/2 opacity-0 pointer-events-none"
@@ -407,7 +417,7 @@ const MovieInfoModal = ({
                   <button
                     type="button"
                     onClick={() => setIsMuted((prev) => !prev)}
-                    className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
+                    className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-full border-[1.5px] border-white/60 bg-[#2a2a2a]/60 text-white transition hover:border-white hover:bg-white/20"
                     aria-label={isMuted ? "Unmute trailer" : "Mute trailer"}
                   >
                     {isMuted ? (

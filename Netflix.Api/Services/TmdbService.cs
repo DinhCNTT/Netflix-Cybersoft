@@ -68,7 +68,7 @@ namespace Netflix.Api.Services
             var dateLte = DateTime.UtcNow.ToString("yyyy-MM-dd");
             var dateGte = DateTime.UtcNow.AddMonths(-1).ToString("yyyy-MM-dd");
             
-            var endpoint = $"/discover/movie?primary_release_date.gte={dateGte}&primary_release_date.lte={dateLte}";
+            var endpoint = $"/discover/movie?primary_release_date.gte={dateGte}&primary_release_date.lte={dateLte}&vote_count.gte=20&without_keywords=10004,3205,155663,189814,191633,10452,228919";
             if (isKids)
             {
                 endpoint += "&certification_country=US&certification.lte=PG&with_genres=16|10751";
@@ -80,7 +80,7 @@ namespace Netflix.Api.Services
 
         public async Task<TmdbResponseDto<TmdbMovieDto>> GetMoviesByGenreAsync(int genreId, bool isKids = false)
         {
-            var endpoint = $"/discover/movie?with_genres={genreId}";
+            var endpoint = $"/discover/movie?with_genres={genreId}&vote_count.gte=50&without_keywords=10004,3205,155663,189814,191633,10452,228919";
             if (isKids)
             {
                 // NẾU LÀ TRẺ EM: Bắt buộc thể loại này phải kết hợp với Hoạt hình (16)
@@ -93,9 +93,9 @@ namespace Netflix.Api.Services
                    ?? new TmdbResponseDto<TmdbMovieDto>();
         }
 
-        public async Task<TmdbResponseDto<TmdbMovieDto>> DiscoverMoviesAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false)
+        public async Task<TmdbResponseDto<TmdbMovieDto>> DiscoverMoviesAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false, string withoutGenres = "", string sortBy = "popularity.desc", int? voteCountGte = null, string releaseDateGte = null, string releaseDateLte = null)
         {
-            var endpoint = "/discover/movie?sort_by=popularity.desc";
+            var endpoint = $"/discover/movie?sort_by={sortBy ?? "popularity.desc"}";
             
             var finalGenres = withGenres;
             if (isKids)
@@ -107,17 +107,24 @@ namespace Netflix.Api.Services
             }
             
             if (!string.IsNullOrEmpty(finalGenres)) endpoint += $"&with_genres={finalGenres}";
+            if (!string.IsNullOrEmpty(withoutGenres)) endpoint += $"&without_genres={withoutGenres}";
             if (!string.IsNullOrEmpty(withOriginCountry)) endpoint += $"&with_origin_country={withOriginCountry}";
             if (!string.IsNullOrEmpty(withKeywords)) endpoint += $"&with_keywords={withKeywords}";
             if (!string.IsNullOrEmpty(withOriginalLanguage)) endpoint += $"&with_original_language={withOriginalLanguage}";
+            if (voteCountGte.HasValue) endpoint += $"&vote_count.gte={voteCountGte.Value}";
+            if (!string.IsNullOrEmpty(releaseDateGte)) endpoint += $"&primary_release_date.gte={releaseDateGte}";
+            if (!string.IsNullOrEmpty(releaseDateLte)) endpoint += $"&primary_release_date.lte={releaseDateLte}";
+            
+            // Block softcore/erotic movies bypassing include_adult=false
+            endpoint += "&without_keywords=10004,3205,155663,189814,191633,10452,228919";
             
             return await GetAsync<TmdbResponseDto<TmdbMovieDto>>(endpoint) 
                    ?? new TmdbResponseDto<TmdbMovieDto>();
         }
 
-        public async Task<TmdbResponseDto<TmdbMovieDto>> DiscoverTvShowsAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false)
+        public async Task<TmdbResponseDto<TmdbMovieDto>> DiscoverTvShowsAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false, string withoutGenres = "", string sortBy = "popularity.desc", int? voteCountGte = null, string releaseDateGte = null, string releaseDateLte = null)
         {
-            var endpoint = "/discover/tv?sort_by=popularity.desc";
+            var endpoint = $"/discover/tv?sort_by={sortBy ?? "popularity.desc"}";
             
             var finalGenres = withGenres;
             if (isKids)
@@ -128,9 +135,16 @@ namespace Netflix.Api.Services
             }
             
             if (!string.IsNullOrEmpty(finalGenres)) endpoint += $"&with_genres={finalGenres}";
+            if (!string.IsNullOrEmpty(withoutGenres)) endpoint += $"&without_genres={withoutGenres}";
             if (!string.IsNullOrEmpty(withOriginCountry)) endpoint += $"&with_origin_country={withOriginCountry}";
             if (!string.IsNullOrEmpty(withKeywords)) endpoint += $"&with_keywords={withKeywords}";
             if (!string.IsNullOrEmpty(withOriginalLanguage)) endpoint += $"&with_original_language={withOriginalLanguage}";
+            if (voteCountGte.HasValue) endpoint += $"&vote_count.gte={voteCountGte.Value}";
+            if (!string.IsNullOrEmpty(releaseDateGte)) endpoint += $"&first_air_date.gte={releaseDateGte}";
+            if (!string.IsNullOrEmpty(releaseDateLte)) endpoint += $"&first_air_date.lte={releaseDateLte}";
+            
+            // Block softcore/erotic tv shows bypassing include_adult=false
+            endpoint += "&without_keywords=10004,3205,155663,189814,191633,10452,228919";
             
             return await GetAsync<TmdbResponseDto<TmdbMovieDto>>(endpoint) 
                    ?? new TmdbResponseDto<TmdbMovieDto>();

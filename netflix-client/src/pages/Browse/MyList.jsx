@@ -206,7 +206,6 @@ const MyList = () => {
           </div>
         ) : myListMovies.length > 0 ? (
           <MovieRow
-            title="Danh sách của tôi"
             movies={myListMovies}
             variant="standard"
             onPlay={handleOpenMovieInfo}

@@ -7,8 +7,8 @@ namespace Netflix.Api.Services
         Task<TmdbResponseDto<TmdbMovieDto>> GetTrendingMoviesAsync(bool isKids = false);
         Task<TmdbResponseDto<TmdbMovieDto>> GetNewReleasesAsync(bool isKids = false);
         Task<TmdbResponseDto<TmdbMovieDto>> GetMoviesByGenreAsync(int genreId, bool isKids = false);
-        Task<TmdbResponseDto<TmdbMovieDto>> DiscoverMoviesAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false);
-        Task<TmdbResponseDto<TmdbMovieDto>> DiscoverTvShowsAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false);
+        Task<TmdbResponseDto<TmdbMovieDto>> DiscoverMoviesAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false, string withoutGenres = "", string sortBy = "popularity.desc", int? voteCountGte = null, string releaseDateGte = null, string releaseDateLte = null);
+        Task<TmdbResponseDto<TmdbMovieDto>> DiscoverTvShowsAsync(string withGenres = "", string withOriginCountry = "", string withKeywords = "", string withOriginalLanguage = "", bool isKids = false, string withoutGenres = "", string sortBy = "popularity.desc", int? voteCountGte = null, string releaseDateGte = null, string releaseDateLte = null);
         Task<TmdbResponseDto<TmdbMovieDto>> GetMovieRecommendationsAsync(int movieId, bool isKids = false);
         Task<TmdbMovieDto?> GetMovieDetailsAsync(int tmdbId);
         Task<TmdbGenreResponseDto> GetGenresAsync();
